@@ -1,6 +1,12 @@
 Adam wakes up in the morning.
 He brushes his teeth.
 He has breakfast.
-Then he . . . 
+<<<<<<< HEAD
+Then he checked instagram.
 he goes to class.
 he sleep in the class.
+=======
+Then he . . .
+he takes a bath 
+he gets ready 
+>>>>>>> main
