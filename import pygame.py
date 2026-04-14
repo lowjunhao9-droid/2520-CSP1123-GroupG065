@@ -56,7 +56,7 @@ while running:
         square.moveLeft(10)
     if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width:
         square.moveRight(10)
-    if keys[pygame.K_UP] and square.rect.y > 1:
+    if keys[pygame.K_UP] and square.rect.y > 1: 
         square.moveForward(10)
     if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height:
         square.moveBack(10)
