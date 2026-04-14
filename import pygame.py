@@ -64,9 +64,9 @@ while running:
         square.moveLeft(10)
     if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.height: # D = Right 
         square.moveRight(10)
-    if keys[pygame.K_w] and square.rect.y > 1:
+    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
         square.moveForward(10)
-    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:
+    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
 
     # Clear background each frame
