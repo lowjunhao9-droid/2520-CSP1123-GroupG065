@@ -14,6 +14,7 @@ SURFACE_COLOR = (167, 255, 100)
 RED = (200, 0, 0)
 black = (0,0,0,)
 blue = (0,0,150)
+purple = (100,0,100)
 
 # Sprite Class
 class Player(pygame.sprite.Sprite):
