@@ -12,6 +12,9 @@ pygame.display.set_caption("Zombie Slayer: Blade Survival")
 COLOR = green
 SURFACE_COLOR = (167, 255, 100)
 RED = (200, 0, 0)
+black = (0,0,0,)
+blue = (0,0,150)
+purple = (100,0,100)
 
 # Sprite Class
 class Player(pygame.sprite.Sprite):
@@ -52,21 +55,21 @@ while running:
             running = False
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
+    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
-    if keys[pygame.K_RIGHT]:
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width: #move right 
         square.moveRight(10)
-    if keys[pygame.K_UP]:
+    if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(10)
-    if keys[pygame.K_DOWN]:
+    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
         square.moveBack(10)
-    if keys[pygame.K_a]:   # A = left
+    if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
         square.moveLeft(10)
-    if keys[pygame.K_d]:   # D = right
+    if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.height: # D = Right 
         square.moveRight(10)
-    if keys[pygame.K_w]:   # W = up
+    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
         square.moveForward(10)
-    if keys[pygame.K_s]:   # S = down
+    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
 
     # Clear background each frame
