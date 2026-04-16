@@ -5,13 +5,15 @@ pygame.init()
 
 # Display window
 background = pygame.display.set_mode((1500, 1000))
-green = (0, 100, 0)
 pygame.display.set_caption("Zombie Slayer: Blade Survival")
 
 # Colors
-COLOR = green
+GREEN = (0,100,0)
 SURFACE_COLOR = (167, 255, 100)
 RED = (200, 0, 0)
+black = (0,0,0,)
+blue = (0,0,150)
+purple = (100,0,100)
 
 # Sprite Class
 class Player(pygame.sprite.Sprite):
@@ -19,7 +21,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface([width, height])
         self.image.fill(SURFACE_COLOR)
-        self.image.set_colorkey(COLOR)
+        self.image.set_colorkey(GREEN)
         pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, height))
         self.rect = self.image.get_rect()
 
@@ -34,17 +36,30 @@ class Player(pygame.sprite.Sprite):
 
     def moveBack(self, speed):
         self.rect.y += speed   # down
+class Zombie(pygame.sprite.Sprite):
+    def __init__(self, image_file, scale=(50,50)):
+        super().__init__()
+        self.image = pygame.image.load(image_file).convert_alpha()
+        self.image = pygame.transform.scale(self.image, scale) #resize
+        self.rect = self.image.get_rect()
 
-# Create sprite
+# Create sprite(Player)
 all_sprites_list = pygame.sprite.Group()
 square = Player(RED, 100, 100)
 square.rect.x = 200
 square.rect.y = 300
 all_sprites_list.add(square)
 
-clock = pygame.time.Clock()
+#Create zombie sprite
+zombie = Zombie("Zombie1.webp", scale=(100,100))
+zombie.rect.x = 600
+zombie.rect.y = 600
+all_sprites_list.add(zombie)
+
+
 
 # Game loop
+clock = pygame.time.Clock()
 running = True
 while running:
     for event in pygame.event.get():
@@ -52,25 +67,25 @@ while running:
             running = False
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
+    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
-    if keys[pygame.K_RIGHT]:
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width: #move right 
         square.moveRight(10)
-    if keys[pygame.K_UP]:
+    if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(10)
-    if keys[pygame.K_DOWN]:
+    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
         square.moveBack(10)
-    if keys[pygame.K_a]:   # A = left
+    if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
         square.moveLeft(10)
-    if keys[pygame.K_d]:   # D = right
+    if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.height: # D = Right 
         square.moveRight(10)
-    if keys[pygame.K_w]:   # W = up
+    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
         square.moveForward(10)
-    if keys[pygame.K_s]:   # S = down
+    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
 
     # Clear background each frame
-    background.fill(green)
+    background.fill(GREEN)
 
     # Draw sprites
     all_sprites_list.update()
@@ -78,10 +93,6 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
+#testing git lmao 
+
 pygame.quit()
-            
-        
-
-      
-
-
