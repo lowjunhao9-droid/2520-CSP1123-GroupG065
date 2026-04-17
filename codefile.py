@@ -5,11 +5,10 @@ pygame.init()
 
 # Display window
 background = pygame.display.set_mode((1500, 1000))
-green = (0, 100, 0)
 pygame.display.set_caption("Zombie Slayer: Blade Survival")
 
 # Colors
-COLOR = green
+GREEN = (0,100,0)
 SURFACE_COLOR = (167, 255, 100)
 RED = (200, 0, 0)
 black = (0,0,0,)
@@ -22,7 +21,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface([width, height])
         self.image.fill(SURFACE_COLOR)
-        self.image.set_colorkey(COLOR)
+        self.image.set_colorkey(GREEN)
         pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, height))
         self.rect = self.image.get_rect()
 
@@ -37,17 +36,44 @@ class Player(pygame.sprite.Sprite):
 
     def moveBack(self, speed):
         self.rect.y += speed   # down
+class Zombie(pygame.sprite.Sprite):
+    def __init__(self, image_file, scale=(50,50), speed=2, player=None):
+        super().__init__()
+        self.image = pygame.image.load(image_file).convert_alpha()
+        self.image = pygame.transform.scale(self.image, scale) #resize
+        self.rect = self.image.get_rect()
+        self.speed = speed
+        self.player = player
+    
+    def update(self):
+        #Calculate direction(player-zombie)
+        if self.player:
+            dx = self.player.rect.x - self.rect.x
+            dy = self.player.rect.y - self.rect.y
+            distance = (dx**2 + dy**2) ** 0.5
 
-# Create sprite
+            if distance != 0: #avoid division by zero
+               #Normalize vector and move zombie
+                self.rect.x += self.speed * dx/distance
+                self.rect.y += self.speed  * dy/distance
+
+# Create sprite(Player)
 all_sprites_list = pygame.sprite.Group()
 square = Player(RED, 100, 100)
 square.rect.x = 200
 square.rect.y = 300
 all_sprites_list.add(square)
 
-clock = pygame.time.Clock()
+#Create zombie sprite
+zombie = Zombie("Zombie1.webp", scale=(100,100),player=square)
+zombie.rect.x = 600
+zombie.rect.y = 600
+all_sprites_list.add(zombie)
+
+
 
 # Game loop
+clock = pygame.time.Clock()
 running = True
 while running:
     for event in pygame.event.get():
@@ -71,9 +97,12 @@ while running:
         square.moveForward(10)
     if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
-
+    
+    #Update all sprites
+    all_sprites_list.update()
+    
     # Clear background each frame
-    background.fill(green)
+    background.fill(GREEN)
 
     # Draw sprites
     all_sprites_list.update()
@@ -81,10 +110,7 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
+#testing git lmao 
+
 pygame.quit()
-            
-        
-
-      
-
 
