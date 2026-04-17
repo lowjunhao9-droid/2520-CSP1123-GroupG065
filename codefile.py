@@ -37,11 +37,25 @@ class Player(pygame.sprite.Sprite):
     def moveBack(self, speed):
         self.rect.y += speed   # down
 class Zombie(pygame.sprite.Sprite):
-    def __init__(self, image_file, scale=(50,50)):
+    def __init__(self, image_file, scale=(50,50), speed=2, player=None):
         super().__init__()
         self.image = pygame.image.load(image_file).convert_alpha()
         self.image = pygame.transform.scale(self.image, scale) #resize
         self.rect = self.image.get_rect()
+        self.speed = speed
+        self.player = player
+    
+    def update(self):
+        #Calculate direction(player-zombie)
+        if self.player:
+            dx = self.player.rect.x - self.rect.x
+            dy = self.player.rect.y - self.rect.y
+            distance = (dx**2 + dy**2) ** 0.5
+
+            if distance != 0: #avoid division by zero
+               #Normalize vector and move zombie
+                self.rect.x += self.speed * dx/distance
+                self.rect.y += self.speed  * dy/distance
 
 # Create sprite(Player)
 all_sprites_list = pygame.sprite.Group()
@@ -51,7 +65,7 @@ square.rect.y = 300
 all_sprites_list.add(square)
 
 #Create zombie sprite
-zombie = Zombie("Zombie1.webp", scale=(100,100))
+zombie = Zombie("Zombie1.webp", scale=(100,100),player=square)
 zombie.rect.x = 600
 zombie.rect.y = 600
 all_sprites_list.add(zombie)
@@ -83,7 +97,10 @@ while running:
         square.moveForward(10)
     if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
-
+    
+    #Update all sprites
+    all_sprites_list.update()
+    
     # Clear background each frame
     background.fill(GREEN)
 
@@ -96,3 +113,4 @@ while running:
 #testing git lmao 
 
 pygame.quit()
+
