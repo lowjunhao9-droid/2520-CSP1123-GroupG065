@@ -99,15 +99,15 @@ while running:
     if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
 
-        if square.rect.x >= 1500 - square.rect.width:
+    if square.rect.x >= 1500 - square.rect.width:
             room += 1
             square.rect.x = 0
 
-        if room == 1:
+    if room == 1:
             background.fill(GREEN)
-        elif room == 2:
-            background.fill(purple)    
-        elif room == 3:
+    elif room == 2:
+            background.fill(blue)    
+    elif room == 3:
             background.fill(black)
 
             
