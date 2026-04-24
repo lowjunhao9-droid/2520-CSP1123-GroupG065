@@ -14,6 +14,7 @@ RED = (200, 0, 0)
 black = (0,0,0,)
 blue = (0,0,150)
 purple = (100,0,100)
+room = 1
 
 # Sprite Class
 class Player(pygame.sprite.Sprite):
@@ -83,7 +84,7 @@ while running:
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
-    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width: #move right 
+    if keys[pygame.K_RIGHT] : #move right 
         square.moveRight(10)
     if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(10)
@@ -91,18 +92,37 @@ while running:
         square.moveBack(10)
     if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
         square.moveLeft(10)
-    if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.height: # D = Right 
+    if keys[pygame.K_d] : # D = Right 
         square.moveRight(10)
     if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
         square.moveForward(10)
     if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
         square.moveBack(10)
-    
+
+    if square.rect.x >= 1500 - square.rect.width:
+            room += 1
+            square.rect.x = 0
+
+    if room == 1:
+            background.fill(GREEN)
+    elif room == 2:
+            background.fill(blue)    
+    elif room == 3:
+            background.fill(black)
+
+            
+
+
+
+
+
     #Update all sprites
     all_sprites_list.update()
     
     # Clear background each frame
     background.fill(GREEN)
+    if room == 2:
+        background.fill(blue)
 
     # Draw sprites
     all_sprites_list.update()
