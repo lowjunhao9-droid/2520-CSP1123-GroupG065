@@ -82,9 +82,9 @@ while running:
             running = False
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]: #move left 
+    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
-    if keys[pygame.K_RIGHT]  : #move right 
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width or square.rect.y < 00 : #move right 
         square.moveRight(10)
     if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(10)
