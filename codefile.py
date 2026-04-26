@@ -16,6 +16,15 @@ blue = (0,0,150)
 purple = (100,0,100)
 room = 1
 
+#still obstacles 
+obstacles = [
+     pygame.Rect(1, 150, 80, 80),# obstacle (X position, Y position, obstacle width, obstacle height)
+     pygame.Rect(500, 400, 100, 50),
+     pygame.Rect(100, 450, 200, 40),
+     pygame.Rect(50, 200, 40, 200),
+     pygame.Rect(1000, 200, 50, 100),
+]
+
 # Sprite Class
 class Player(pygame.sprite.Sprite):
     def __init__(self, color, height, width):
@@ -80,8 +89,10 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
+    #move player          
     keys = pygame.key.get_pressed()
+    old_x = square.rect.x
+    old_y = square.rect.y 
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
     if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width or square.rect.y < 00 : #move right 
@@ -110,19 +121,23 @@ while running:
     elif room == 3:
             background.fill(black)
 
-            
-
-
-
-
-
-    #Update all sprites
+    #check collision with still obstacles
+    for obstacle in obstacles:
+         if square.rect.colliderect(obstacle):
+              square.rect.x, square.rect.y = old_x, old_y 
+              
+  #Update all sprites
     all_sprites_list.update()
     
     # Clear background each frame
     background.fill(GREEN)
     if room == 2:
         background.fill(blue)
+
+    # Draw obstacles After background but BEFORE SPRITES   
+    for obstacle in obstacles:
+         pygame.draw.rect(background, (0, 0, 0), obstacle)
+           
 
     # Draw sprites
     all_sprites_list.update()
