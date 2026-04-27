@@ -18,10 +18,10 @@ room = 1
 
 #still obstacles 
 obstacles = [
-     pygame.Rect(1, 150, 80, 80),# obstacle (X position, Y position, obstacle width, obstacle height)
-     pygame.Rect(500, 400, 100, 50),
-     pygame.Rect(100, 450, 200, 40),
-     pygame.Rect(50, 200, 40, 200),
+     pygame.Rect(1, 1, 30, 1000),# obstacle (X position, Y position, obstacle width, obstacle height)
+     pygame.Rect(700, 800, 1000, 70),
+     pygame.Rect(350, 450, 300, 50),
+     pygame.Rect(1450, 200, 50, 400),
      pygame.Rect(1000, 200, 50, 100),
 ]
 
