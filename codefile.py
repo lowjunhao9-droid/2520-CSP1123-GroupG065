@@ -18,11 +18,16 @@ room = 1
 
 #still obstacles 
 obstacles = [
-     pygame.Rect(1, 1, 30, 1000),# obstacle (X position, Y position, obstacle width, obstacle height)
-     pygame.Rect(700, 800, 1000, 70),
-     pygame.Rect(350, 450, 300, 50),
-     pygame.Rect(1450, 200, 50, 400),
-     pygame.Rect(1000, 200, 50, 100),
+     # obstacle (X position, Y position, obstacle WIDTH, obstacle HEIGHT)
+     pygame.Rect(0, 1, 30, 1000),# left wall
+     pygame.Rect(1, 60, 1500, 30),# top wall 
+     pygame.Rect(10, 900, 1500, 30 ), #bottom wall 
+     pygame.Rect(1480, 600, 30, 700), #right bottom wall
+     pygame.Rect(1480, 80, 30, 350), # right top wall     
+]
+
+inside_obstacles =[
+     pygame.Rect(380, 200, 50, 300),
 ]
 
 # Sprite Class
@@ -95,13 +100,13 @@ while running:
     old_y = square.rect.y 
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(10)
-    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width or square.rect.y < 00 : #move right 
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width  : #move right 
         square.moveRight(10)
     if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(10)
     if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
         square.moveBack(10)
-    if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
+    if keys[pygame.K_a] :  # A = left 
         square.moveLeft(10)
     if keys[pygame.K_d] : # D = Right 
         square.moveRight(10)
@@ -113,6 +118,10 @@ while running:
     if square.rect.x > 1500:
             room += 1
             square.rect.x = 0
+    if square.rect.x < 1:
+         room -= 1 
+         square.rect.x = 1       
+            
 
     if room == 1:
             background.fill(GREEN)
@@ -121,10 +130,16 @@ while running:
     elif room == 3:
             background.fill(black)
 
-    #check collision with still obstacles
+    #check collision with still obstacles (the wall)
     for obstacle in obstacles:
          if square.rect.colliderect(obstacle):
               square.rect.x, square.rect.y = old_x, old_y 
+    
+    #check collision with small obstacles inside the wall
+    for inside_obstacle in inside_obstacles:
+         if square.rect.colliderect(inside_obstacle):
+              square.rect.x, square.rect.y = old_x, old_y
+
               
   #Update all sprites
     all_sprites_list.update()
@@ -137,6 +152,9 @@ while running:
     # Draw obstacles After background but BEFORE SPRITES   
     for obstacle in obstacles:
          pygame.draw.rect(background, (0, 0, 0), obstacle)
+
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
            
 
     # Draw sprites
