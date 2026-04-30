@@ -34,7 +34,7 @@ def reset_game():
     all_sprites_list = pygame.sprite.Group()
 
     # New player
-    square = Player(RED, 100, 100)
+    square = Player("player.png", 100, 100)
     square.rect.x = 200
     square.rect.y = 300
     all_sprites_list.add(square)
@@ -49,10 +49,11 @@ def reset_game():
 class Player(pygame.sprite.Sprite):
     def __init__(self, color, height, width):
         super().__init__()
-        self.image = pygame.Surface([width, height])
-        self.image.fill(SURFACE_COLOR)
-        self.image.set_colorkey(GREEN)
-        pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, height))
+        #Load player image
+        self.image = pygame.image.load("player.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (200,200))
+        
+        #Stats
         self.rect = self.image.get_rect()
         self.health = 100 #player health
         self.stamina = 100 #stamina player
@@ -62,10 +63,10 @@ class Player(pygame.sprite.Sprite):
     def regen_stamina(self):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_regen_time >= self.regen_delay:
-             if self.stamina < 100:
+            if self.stamina < 100:
                   self.stamina += 10
                   print("Stamina",self.stamina)
-             self.last_regen_time = current_time
+            self.last_regen_time = current_time
 
 
 
@@ -143,7 +144,7 @@ class Zombie(pygame.sprite.Sprite):
                  
 
 class Attack(pygame.sprite.Sprite):
-     def __init__(self, player, duration=10):
+     def __init__(self, player, duration=200):
           super().__init__()
           #Load slash      
           self.image= pygame.image.load("slash2.png").convert_alpha()
@@ -152,7 +153,9 @@ class Attack(pygame.sprite.Sprite):
           self.image = pygame.transform.scale(self.image,(120,120))
 
           #Position the slash just in front of the player
-          self.rect = self.image.get_rect(midleft=player.rect.midright)
+          self.rect = self.image.get_rect()
+          self.rect.midleft = (player.rect.midright[0] - 100, player.rect.midright[1])
+
           
           #Track time
           self.spawn_time = pygame.time.get_ticks()
@@ -205,7 +208,7 @@ while running:
             square.stamina -= 1     # drain stamina each frame
             print("stamina",round(square.stamina))
     else:
-        square.regen_stamina
+        square.regen_stamina()
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
         square.moveLeft(speed)
     if keys[pygame.K_RIGHT] : #move right 
@@ -262,4 +265,4 @@ while running:
          pygame.draw.rect(background, (0, 0, 0), obstacle)
 #testing git lmao 
 
-pygame.quit() #any problem inside
+pygame.quit() 
