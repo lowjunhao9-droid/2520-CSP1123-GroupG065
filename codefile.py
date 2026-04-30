@@ -118,7 +118,7 @@ class Zombie(pygame.sprite.Sprite):
                  
 
 class Attack(pygame.sprite.Sprite):
-     def __init__(self, player, duration=10):
+     def __init__(self, player, duration=200):
           super().__init__()
           #Load slash      
           self.image= pygame.image.load("slash2.png").convert_alpha()
