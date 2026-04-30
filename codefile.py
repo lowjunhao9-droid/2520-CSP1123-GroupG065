@@ -25,6 +25,26 @@ obstacles = [
      pygame.Rect(1000, 200, 50, 100),
 ]
 
+# definition of reset game
+def reset_game():
+    global square, zombie, all_sprites_list, room
+    room = 1
+
+    # Reset sprite groups
+    all_sprites_list = pygame.sprite.Group()
+
+    # New player
+    square = Player(RED, 100, 100)
+    square.rect.x = 200
+    square.rect.y = 300
+    all_sprites_list.add(square)
+
+    # New zombie
+    zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
+    zombie.rect.x = 600
+    zombie.rect.y = 600
+    all_sprites_list.add(zombie)
+
 # Sprite Class
 class Player(pygame.sprite.Sprite):
     def __init__(self, color, height, width):
@@ -35,6 +55,18 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, height))
         self.rect = self.image.get_rect()
         self.health = 100 #player health
+        self.stamina = 100 #stamina player
+        self.last_regen_time = pygame.time.get_ticks()
+        self.regen_delay = 1000 #wait 1 second before next regen
+
+    def regen_stamina(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_regen_time >= self.regen_delay:
+             if self.stamina < 100:
+                  self.stamina += 10
+                  print("Stamina",self.stamina)
+             self.last_regen_time = current_time
+
 
 
     def moveRight(self, pixels):
@@ -47,7 +79,29 @@ class Player(pygame.sprite.Sprite):
         self.rect.y -= speed   # up
 
     def moveBack(self, speed):
-        self.rect.y += speed   # down        
+        self.rect.y += speed   # down
+    
+    def attack(self, zombies_group, all_sprites_list):
+        #spawn visible slash
+        slash = Attack(self)
+        all_sprites_list.add(slash)
+         
+        #Damge zombie in range 
+        for zombie in zombies_group:
+              if self.rect.colliderect(zombie.rect):
+                   zombie.health -=10
+                   print("Zombie hit! Health",zombie.health)
+    
+    def die(self):
+        print("Player dead")
+        self.kill() # remove player sprite
+
+
+             
+         
+
+         
+ 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(50,50), speed=2, player=None):
         super().__init__()
@@ -89,7 +143,7 @@ class Zombie(pygame.sprite.Sprite):
                  
 
 class Attack(pygame.sprite.Sprite):
-     def __init__(self, player, duration=200):
+     def __init__(self, player, duration=10):
           super().__init__()
           #Load slash      
           self.image= pygame.image.load("slash2.png").convert_alpha()
@@ -136,28 +190,40 @@ while running:
         #keyboard event
         if event.type == pygame.QUIT:
             running = False
-    #move player          
+        
+        #mouse event
+        if event.type == pygame.MOUSEBUTTONDOWN:
+             if event.button == 1: #in python left click value = 1
+                square.attack([zombie], all_sprites_list)
+    
+    
     keys = pygame.key.get_pressed()
-    old_x = square.rect.x
-    old_y = square.rect.y 
+    speed = 10
+    if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
+        if square.stamina > 0:
+            speed = 20              # sprint speed
+            square.stamina -= 1     # drain stamina each frame
+            print("stamina",round(square.stamina))
+    else:
+        square.regen_stamina
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
-        square.moveLeft(10)
-    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width or square.rect.y < 00 : #move right 
-        square.moveRight(10)
+        square.moveLeft(speed)
+    if keys[pygame.K_RIGHT] : #move right 
+        square.moveRight(speed)
     if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
-        square.moveForward(10)
+        square.moveForward(speed)
     if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
-        square.moveBack(10)
+        square.moveBack(speed)
     if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
-        square.moveLeft(10)
+        square.moveLeft(speed)
     if keys[pygame.K_d] : # D = Right 
-        square.moveRight(10)
+        square.moveRight(speed)
     if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
-        square.moveForward(10)
+        square.moveForward(speed)
     if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
-        square.moveBack(10)
+        square.moveBack(speed)
 
-    if square.rect.x > 1500:
+    if square.rect.x >= 1500 - square.rect.width:
             room += 1
             square.rect.x = 0
 
@@ -167,13 +233,15 @@ while running:
             background.fill(blue)    
     elif room == 3:
             background.fill(black)
+    
+    
+    #Check if player id dead or not
+    if square.health <= 0:
+         print("Player died! Restarting game...")
+         reset_game()
+                
 
-    #check collision with still obstacles
-    for obstacle in obstacles:
-         if square.rect.colliderect(obstacle):
-              square.rect.x, square.rect.y = old_x, old_y 
-              
-  #Update all sprites
+    #Update all sprites
     all_sprites_list.update()
     
     # Clear background each frame
@@ -181,10 +249,7 @@ while running:
     if room == 2:
         background.fill(blue)
 
-    # Draw obstacles After background but BEFORE SPRITES   
-    for obstacle in obstacles:
-         pygame.draw.rect(background, (0, 0, 0), obstacle)
-           
+
 
     # Draw sprites
     all_sprites_list.update()
@@ -192,8 +257,9 @@ while running:
     pygame.display.flip()
     clock.tick(60)
 
+    # Draw obstacles After background but BEFORE SPRITES   
+    for obstacle in obstacles:
+         pygame.draw.rect(background, (0, 0, 0), obstacle)
 #testing git lmao 
-#git is not working T-T
-#im mentally unstable
-pygame.quit()
 
+pygame.quit() #any problem inside
