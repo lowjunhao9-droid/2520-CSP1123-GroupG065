@@ -244,8 +244,7 @@ while running:
          reset_game()
                 
 
-    #Update all sprites
-    all_sprites_list.update()
+    
     
     # Clear background each frame
     background.fill(GREEN)
