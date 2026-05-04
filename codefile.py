@@ -3,7 +3,7 @@ import random
 
 pygame.init()
 
-# Display window
+# Display window event
 background = pygame.display.set_mode((1500, 800))
 pygame.display.set_caption("Zombie Slayer: Blade Survival")
 
@@ -59,8 +59,8 @@ class Zombie(pygame.sprite.Sprite):
 
             if distance != 0: #avoid division by zero
                #Normalize vector and move zombie
-                self.rect.x += self.speed * dx/distance
-                self.rect.y += self.speed  * dy/distance
+                self.rect.x = self.speed * dx/distance
+                self.rect.y = self.speed  * dy/distance
 
 # Create sprite(Player)
 all_sprites_list = pygame.sprite.Group()
@@ -75,7 +75,29 @@ zombie.rect.x = 600
 zombie.rect.y = 600
 all_sprites_list.add(zombie)
 
+gate_is_open = False
 
+# Gate position (right side)
+gate_rect = pygame.Rect(1400, 250, 60, 300)
+
+def draw_gate(surface, rect, is_open):
+    
+    pygame.draw.rect(surface, (90, 90, 90), rect)  
+
+    if not is_open:
+        # CLOSED 
+        for y in range(rect.top + 8, rect.bottom - 8, 20):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+    else:
+        # OPEN 
+        
+        # top bars
+        for y in range(rect.top + 5, rect.top + 20, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+        
+        # bottom bars
+        for y in range(rect.bottom - 20, rect.bottom - 5, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
 
 # Game loop
 clock = pygame.time.Clock()
@@ -112,6 +134,9 @@ while running:
                 damage_timer = 0.0
                 sprint_cooldown = 0.0
                 game_over = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_g:
+                gate_is_open = not gate_is_open        
 
     if menu_state == "playing" and not game_over:
         keys = pygame.key.get_pressed()
@@ -142,6 +167,8 @@ while running:
         if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
             square.moveBack(speed)
             moving = True
+
+
 
         # Stamina logic
         if sprinting:
@@ -201,6 +228,8 @@ while running:
             # Draw sprites
             all_sprites_list.update()
             all_sprites_list.draw(background)
+
+            draw_gate(background, gate_rect, gate_is_open)
 
             # health bar
             health_bar_width = 200
