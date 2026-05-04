@@ -26,8 +26,20 @@ obstacles = [
      pygame.Rect(1480, 80, 30, 350), # right top wall     
 ]
 
+#obstacle inside the wall/ small obstacles in the map 
 inside_obstacles =[
+    #pygame.rect(x position, y position, width, height)
      pygame.Rect(380, 200, 50, 300),
+     pygame.Rect(500, 600, 300, 50),
+     pygame.Rect(715, 650, 85, 70),
+     pygame.Rect(1000, 410, 95, 470),
+     pygame.Rect(820, 830, 200, 50),
+     pygame.Rect(795, 400, 300, 80),
+     pygame.Rect(410, 200, 530, 50),
+     pygame.Rect(1100, 200, 150, 40),
+     pygame.Rect(1250, 200, 40, 150),
+     pygame.Rect(1250, 700, 110, 130),
+     
 ]
 
 # definition of reset game
