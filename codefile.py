@@ -18,11 +18,28 @@ room = 1
 
 #still obstacles 
 obstacles = [
-     pygame.Rect(1, 1, 30, 1000),# obstacle (X position, Y position, obstacle width, obstacle height)
-     pygame.Rect(700, 800, 1000, 70),
-     pygame.Rect(350, 450, 300, 50),
-     pygame.Rect(1450, 200, 50, 400),
-     pygame.Rect(1000, 200, 50, 100),
+     # obstacle (X position, Y position, obstacle WIDTH, obstacle HEIGHT)
+     pygame.Rect(0, 1, 30, 1000),# left wall
+     pygame.Rect(1, 60, 1500, 30),# top wall 
+     pygame.Rect(10, 900, 1500, 30 ), #bottom wall 
+     pygame.Rect(1480, 600, 30, 700), #right bottom wall
+     pygame.Rect(1480, 80, 30, 350), # right top wall     
+]
+
+#obstacle inside the wall/ small obstacles in the map 
+inside_obstacles =[
+    #pygame.rect(x position, y position, width, height)
+     pygame.Rect(380, 200, 50, 300),
+     pygame.Rect(500, 600, 300, 50),
+     pygame.Rect(715, 650, 85, 70),
+     pygame.Rect(1000, 410, 95, 470),
+     pygame.Rect(820, 830, 200, 50),
+     pygame.Rect(795, 400, 300, 80),
+     pygame.Rect(410, 200, 530, 50),
+     pygame.Rect(1100, 200, 150, 40),
+     pygame.Rect(1250, 200, 40, 150),
+     pygame.Rect(1250, 700, 110, 130),
+     
 ]
 
 # definition of reset game
@@ -201,6 +218,9 @@ while running:
     
     
     keys = pygame.key.get_pressed()
+    old_x = square.rect.x 
+    old_y = square.rect.y 
+    
     speed = 10
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
         if square.stamina > 0:
@@ -210,15 +230,15 @@ while running:
     else:
         square.regen_stamina()
     if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
-        square.moveLeft(speed)
-    if keys[pygame.K_RIGHT] : #move right 
-        square.moveRight(speed)
+        square.moveLeft(10)
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width  : #move right 
+        square.moveRight(10)
     if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
         square.moveForward(speed)
     if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
-        square.moveBack(speed)
-    if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
-        square.moveLeft(speed)
+        square.moveBack(10)
+    if keys[pygame.K_a] :  # A = left 
+        square.moveLeft(10)
     if keys[pygame.K_d] : # D = Right 
         square.moveRight(speed)
     if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
@@ -229,6 +249,10 @@ while running:
     if square.rect.x >= 1500 - square.rect.width:
             room += 1
             square.rect.x = 0
+    if square.rect.x < 1:
+         room -= 1 
+         square.rect.x = 1       
+            
 
     if room == 1:
             background.fill(GREEN)
@@ -244,7 +268,18 @@ while running:
          reset_game()
                 
 
-    #Update all sprites
+    #check collision with still obstacles (the wall)
+    for obstacle in obstacles:
+         if square.rect.colliderect(obstacle):
+              square.rect.x, square.rect.y = old_x, old_y 
+    
+    #check collision with small obstacles inside the wall
+    for inside_obstacle in inside_obstacles:
+         if square.rect.colliderect(inside_obstacle):
+              square.rect.x, square.rect.y = old_x, old_y
+
+              
+  #Update all sprites
     all_sprites_list.update()
     
     # Clear background each frame
@@ -252,7 +287,13 @@ while running:
     if room == 2:
         background.fill(blue)
 
+    # Draw obstacles After background but BEFORE SPRITES   
+    for obstacle in obstacles:
+         pygame.draw.rect(background, (0, 0, 0), obstacle)
 
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
+           
 
     # Draw sprites
     all_sprites_list.update()
