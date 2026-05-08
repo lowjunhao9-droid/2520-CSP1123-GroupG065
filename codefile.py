@@ -63,6 +63,8 @@ def reset_game():
     zombie.rect.y = 600
     all_sprites_list.add(zombie)
 
+    
+
 # Sprite Class
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -187,23 +189,33 @@ class Attack(pygame.sprite.Sprite):
 
 
 
-# Create sprite(Player)
+# Create sprite groups
 all_sprites_list = pygame.sprite.Group()
+zombies_group = pygame.sprite.Group()
+
+# Create sprite(Player)
 square = Player()
 square.rect.x = 100
 square.rect.y = 100
 all_sprites_list.add(square)
 
-#Create zombie sprite
-zombie = Zombie("Zombie1.png", scale=(100,100),player=square)
-zombie.rect.x = 600
-zombie.rect.y = 600
-all_sprites_list.add(zombie)
+#Function to spawn multiple zombies
+def spawn_zombies(num_zombies=5):
+     for i in range(num_zombies):
+        zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
+        zombie.rect.x = random.randint(100, 1400)  # random X
+        zombie.rect.y = random.randint(100, 900)   # random Y
+        zombies_group.add(zombie)
+        all_sprites_list.add(zombie)
+# Spawn 10 zombies at start
+spawn_zombies(3)
 
-zombie2 = Zombie("Zombie1/png",scale=(100,100),player=square)
-zombie.rect.x = 500
-zombie.rect.y = 500
-all_sprites_list.add(zombie2)
+#Create zombie sprite
+#zombie = Zombie("Zombie1.png", scale=(100,100),player=square)
+#zombie.rect.x = 600
+#zombie.rect.y = 600
+#all_sprites_list.add(zombie)
+
 
 
 # Game loop
@@ -219,7 +231,7 @@ while running:
         #mouse event
         if event.type == pygame.MOUSEBUTTONDOWN:
              if event.button == 1: #in python left click value = 1
-                square.attack([zombie], all_sprites_list)
+                square.attack(zombies_group, all_sprites_list)
 
 
     keys = pygame.key.get_pressed()
@@ -299,6 +311,9 @@ while running:
     for inside_obstacle in inside_obstacles:
          pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
 
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
+           
 
     # Draw sprites
     all_sprites_list.update()
