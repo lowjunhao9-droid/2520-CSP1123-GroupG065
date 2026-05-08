@@ -200,6 +200,10 @@ zombie.rect.x = 600
 zombie.rect.y = 600
 all_sprites_list.add(zombie)
 
+zombie2 = Zombie("Zombie1/png",scale=(100,100),player=square)
+zombie.rect.x = 500
+zombie.rect.y = 500
+all_sprites_list.add(zombie2)
 
 
 # Game loop
