@@ -295,6 +295,9 @@ while running:
     for inside_obstacle in inside_obstacles:
          pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
 
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
+           
 
     # Draw sprites
     all_sprites_list.update()
