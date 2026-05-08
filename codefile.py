@@ -51,7 +51,7 @@ def reset_game():
     all_sprites_list = pygame.sprite.Group()
 
     # New player
-    square = Player("player.png", 100, 100)
+    square = Player()
     #spawn point
     square.rect.x = 100
     square.rect.y = 100
@@ -72,6 +72,8 @@ class Player(pygame.sprite.Sprite):
         #Load player image
         self.image = pygame.image.load("player.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (200,200))
+        self.fireball_cooldown = 500 #0.5s cooldown
+        self.last_fireball_time = 0
 
         #Stats
         self.rect = self.image.get_rect()
@@ -112,7 +114,21 @@ class Player(pygame.sprite.Sprite):
               if self.rect.colliderect(zombie.rect):
                    zombie.health -=10
                    print("Zombie hit! Health",zombie.health)
+    
+    def cast_fireball(self,all_sprites_list):
+        current_time = pygame.time.get_ticks()
 
+        if current_time - self.last_fireball_time >= self.fireball_cooldown:
+            self.last_fireball_time = current_time
+
+            #Direction (simple:always right for now)
+            dx,dy = 1,0
+            fireball = Fireball(self.rect.centerx,self.rect.centery,(dx,dy))
+            all_sprites_list.add(fireball)
+            print("Fireball cast")
+        
+        else:
+             print("Fireball on cooldown!")
     def die(self):
         print("Player dead")
         self.kill() # remove player sprite
@@ -187,7 +203,34 @@ class Attack(pygame.sprite.Sprite):
          if pygame.time.get_ticks() - self.spawn_time >= self.duration:
               self.kill()
 
+#special skill for player class
+class Fireball(pygame.sprite.Sprite):
+    def __init__(self,x,y,direction,speed=15,damage=30):
+        super().__init__()
+        self.image = pygame.image.load("fireball.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image,(200,200))
 
+        self.rect = self.image.get_rect(center=(x,y))
+        self.direction = direction #(dc,dy) normalized vector
+        self.speed = speed
+        self.damage = damage
+
+    def update(self):
+        #move fireball
+        self.rect.x += int(self.direction[0]*self.speed)
+        self.rect.y += int(self.direction[1]*self.speed)
+
+        #Check collision with zombies
+        for zombie in zombies_group:
+            if self.rect.colliderect(zombie.rect):
+                 zombie.health -= self.damage
+                 print("Zombie hit by fireball! Health:",zombie.health)
+                 self.kill()#remove fire ball after hit
+                 break
+
+        #Remove if off screen
+        if(self.rect.right < 0 or self.rect.left > 1500 or self.rect.bottom < 0 or self.rect.top > 1000):
+             self.kill()
 
 # Create sprite groups
 all_sprites_list = pygame.sprite.Group()
@@ -210,11 +253,7 @@ def spawn_zombies(num_zombies=5):
 # Spawn 10 zombies at start
 spawn_zombies(3)
 
-#Create zombie sprite
-#zombie = Zombie("Zombie1.png", scale=(100,100),player=square)
-#zombie.rect.x = 600
-#zombie.rect.y = 600
-#all_sprites_list.add(zombie)
+
 
 
 
@@ -239,6 +278,9 @@ while running:
     old_y = square.rect.y 
 
     speed = 10
+    #Fireball key
+    if keys[pygame.K_f]:
+         square.cast_fireball(all_sprites_list)
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
         if square.stamina > 0:
             speed = 20              # sprint speed
