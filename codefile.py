@@ -3,9 +3,13 @@ import random
 
 pygame.init()
 
-# Display window event
-background = pygame.display.set_mode((1500, 800))
-pygame.display.set_caption("Zombie Slayer: Blade Survival")
+# Display window
+background = pygame.display.set_mode((1500, 1000))
+pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
+
+# Load UI images
+healthui_image = pygame.image.load("healthui.png").convert_alpha()
+staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 
 # Colors
 GREEN = (0,100,0)
@@ -14,21 +18,100 @@ RED = (200, 0, 0)
 black = (0,0,0,)
 blue = (0,0,150)
 purple = (100,0,100)
-light_green = (144,238,144)
+room = 1
+
+#still obstacles 
+obstacles = [
+     # obstacle (X position, Y position, obstacle WIDTH, obstacle HEIGHT)
+     pygame.Rect(0, 1, 30, 1000),# left wall
+     pygame.Rect(1, 60, 1500, 30),# top wall 
+     pygame.Rect(10, 900, 1500, 30 ), #bottom wall 
+     pygame.Rect(1480, 600, 30, 700), #right bottom wall
+     pygame.Rect(1480, 80, 30, 350), # right top wall     
+]
+
+#obstacle inside the wall/ small obstacles in the map 
+inside_obstacles =[
+    #pygame.rect(x position, y position, width, height)
+     pygame.Rect(380, 200, 50, 300),
+     pygame.Rect(500, 600, 300, 50),
+     pygame.Rect(715, 650, 85, 70),
+     pygame.Rect(1000, 410, 95, 470),
+     pygame.Rect(820, 830, 200, 50),
+     pygame.Rect(795, 400, 300, 80),
+     pygame.Rect(410, 200, 530, 50),
+     pygame.Rect(1100, 200, 150, 40),
+     pygame.Rect(1250, 200, 40, 150),
+     pygame.Rect(1250, 700, 110, 130),
+     
+]
+
+gate_is_open = False
+
+# Gate position (right side)
+gate_rect = pygame.Rect(1420, 360, 60, 300)
+
+def draw_gate(surface, rect, is_open):
+    pygame.draw.rect(surface, (90, 90, 90), rect)
+
+    if not is_open:
+        for y in range(rect.top + 8, rect.bottom - 8, 20):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+    else:
+        for y in range(rect.top + 5, rect.top + 20, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+        for y in range(rect.bottom - 20, rect.bottom - 5, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+
+# definition of reset game
+def reset_game():
+    global square, zombie, all_sprites_list, room
+    room = 1
+
+    # Reset sprite groups
+    all_sprites_list = pygame.sprite.Group()
+
+    # New player
+    square = Player()
+    #spawn point
+    square.rect.x = 100
+    square.rect.y = 100
+    all_sprites_list.add(square)
+
+    # New zombie
+    zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
+    zombie.rect.x = 600
+    zombie.rect.y = 600
+    all_sprites_list.add(zombie)
+
+    
 
 # Sprite Class
 class Player(pygame.sprite.Sprite):
-    def __init__(self, color, height, width):
+    def __init__(self):
         super().__init__()
-        self.image = pygame.Surface([width, height])
-        self.image.fill(SURFACE_COLOR)
-        self.image.set_colorkey(GREEN)
-        pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, height))
+        #Load player image
+        self.image = pygame.image.load("player.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (200,200))
+        self.fireball_cooldown = 500 #0.5s cooldown
+        self.last_fireball_time = 0
+
+        #Stats
         self.rect = self.image.get_rect()
-        self.health = 100
-        self.max_health = 100
-        self.stamina = 100
-        self.max_stamina = 100
+        self.health = 100 #player health
+        self.stamina = 100 #stamina player
+        self.last_regen_time = pygame.time.get_ticks()
+        self.regen_delay = 1000 #wait 1 second before next regen
+
+    def regen_stamina(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_regen_time >= self.regen_delay:
+            if self.stamina < 100:
+                  self.stamina += 10
+                  print("Stamina",self.stamina)
+            self.last_regen_time = current_time
+
+
 
     def moveRight(self, pixels):
         self.rect.x += pixels
@@ -41,6 +124,42 @@ class Player(pygame.sprite.Sprite):
 
     def moveBack(self, speed):
         self.rect.y += speed   # down
+
+    def attack(self, zombies_group, all_sprites_list):
+        #spawn visible slash
+        slash = Attack(self)
+        all_sprites_list.add(slash)
+
+        #Damge zombie in range 
+        for zombie in zombies_group:
+              if self.rect.colliderect(zombie.rect):
+                   zombie.health -=10
+                   print("Zombie hit! Health",zombie.health)
+    
+    def cast_fireball(self,all_sprites_list):
+        current_time = pygame.time.get_ticks()
+
+        if current_time - self.last_fireball_time >= self.fireball_cooldown:
+            self.last_fireball_time = current_time
+
+            #Direction (simple:always right for now)
+            dx,dy = 1,0
+            fireball = Fireball(self.rect.centerx,self.rect.centery,(dx,dy))
+            all_sprites_list.add(fireball)
+            print("Fireball cast")
+        
+        else:
+             print("Fireball on cooldown!")
+    def die(self):
+        print("Player dead")
+        self.kill() # remove player sprite
+
+
+
+
+
+
+
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(50,50), speed=2, player=None):
         super().__init__()
@@ -49,8 +168,18 @@ class Zombie(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.speed = speed
         self.player = player
-    
+        self.health = 100
+
+        #Cooldown in millisecond (eg. 2000ms = 2 second)
+        self.attack_cooldown = 1000
+        self.last_attack_time = 0
     def update(self):
+        # If zombie is dead,remove it
+        if self.health <= 0:
+             self.kill()
+             return
+
+        #move toward player
         #Calculate direction(player-zombie)
         if self.player:
             dx = self.player.rect.x - self.rect.x
@@ -59,209 +188,261 @@ class Zombie(pygame.sprite.Sprite):
 
             if distance != 0: #avoid division by zero
                #Normalize vector and move zombie
-                self.rect.x = self.speed * dx/distance
-                self.rect.y = self.speed  * dy/distance
+                self.rect.x += self.speed * dx/distance
+                self.rect.y += self.speed  * dy/distance
+
+            #attack if touching player
+            if self.rect.colliderect(self.player.rect):
+                 current_time = pygame.time.get_ticks()
+                 if current_time - self.last_attack_time >= self.attack_cooldown:
+                      self.player.health -= 10
+                      print("Player hit! Heath:", self.player.health)
+                      self.last_attack_time = current_time
+
+
+class Attack(pygame.sprite.Sprite):
+     def __init__(self, player, duration=200):
+          super().__init__()
+          #Load slash      
+          self.image= pygame.image.load("slash2.png").convert_alpha()
+
+          #Scale the image
+          self.image = pygame.transform.scale(self.image,(120,120))
+
+          #Position the slash just in front of the player
+          self.rect = self.image.get_rect()
+          self.rect.midleft = (player.rect.midright[0] - 100, player.rect.midright[1])
+
+
+          #Track time
+          self.spawn_time = pygame.time.get_ticks()
+          self.duration = duration
+
+     def update(self):
+
+         #Remove slash after duration
+         if pygame.time.get_ticks() - self.spawn_time >= self.duration:
+              self.kill()
+
+#special skill for player class
+class Fireball(pygame.sprite.Sprite):
+    def __init__(self,x,y,direction,speed=15,damage=30):
+        super().__init__()
+        self.image = pygame.image.load("fireball.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image,(200,200))
+
+        self.rect = self.image.get_rect(center=(x,y))
+        self.direction = direction #(dc,dy) normalized vector
+        self.speed = speed
+        self.damage = damage
+
+    def update(self):
+        #move fireball
+        self.rect.x += int(self.direction[0]*self.speed)
+        self.rect.y += int(self.direction[1]*self.speed)
+
+        #Check collision with zombies
+        for zombie in zombies_group:
+            if self.rect.colliderect(zombie.rect):
+                 zombie.health -= self.damage
+                 print("Zombie hit by fireball! Health:",zombie.health)
+                 self.kill()#remove fire ball after hit
+                 break
+
+        #Remove if off screen
+        if(self.rect.right < 0 or self.rect.left > 1500 or self.rect.bottom < 0 or self.rect.top > 1000):
+             self.kill()
+
+# Create sprite groups
+all_sprites_list = pygame.sprite.Group()
+zombies_group = pygame.sprite.Group()
 
 # Create sprite(Player)
-all_sprites_list = pygame.sprite.Group()
-square = Player(RED, 100, 100)
-square.rect.x = 200
-square.rect.y = 300
+square = Player()
+square.rect.x = 100
+square.rect.y = 100
 all_sprites_list.add(square)
 
-#Create zombie sprite
-zombie = Zombie("Zombie1.webp", scale=(100,100),player=square)
-zombie.rect.x = 600
-zombie.rect.y = 600
-all_sprites_list.add(zombie)
+#Function to spawn multiple zombies
+def spawn_zombies(num_zombies=5):
+     for i in range(num_zombies):
+        zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
+        zombie.rect.x = random.randint(100, 1400)  # random X
+        zombie.rect.y = random.randint(100, 900)   # random Y
+        zombies_group.add(zombie)
+        all_sprites_list.add(zombie)
+# Spawn 10 zombies at start
+spawn_zombies(3)
 
-gate_is_open = False
 
-# Gate position (right side)
-gate_rect = pygame.Rect(1400, 250, 60, 300)
 
-def draw_gate(surface, rect, is_open):
+
+
+# Main Menu
+def show_menu():
+    font_large = pygame.font.Font(None, 80)
+    font_button = pygame.font.Font(None, 50)
     
-    pygame.draw.rect(surface, (90, 90, 90), rect)  
+    menu_running = True
+    while menu_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                if start_button.collidepoint(mouse_pos):
+                    return True
+                if quit_button.collidepoint(mouse_pos):
+                    return False
+        
+        background.fill((GREEN))
+        
+        # Title (centered)
+        title = font_large.render("ZOMBIE SLAYER", True, (255, 0, 0))
+        title_rect = title.get_rect(center=(750, 200))
+        background.blit(title, title_rect)
+        
+        # Start Button
+        pygame.draw.rect(background, (0, 200, 0), start_button)
+        start_text = font_button.render("START", True, (0, 0, 0))
+        start_text_rect = start_text.get_rect(center=start_button.center)
+        background.blit(start_text, start_text_rect)
+        
+        # Quit Button
+        pygame.draw.rect(background, (200, 0, 0), quit_button)
+        quit_text = font_button.render("QUIT", True, (255, 255, 255))
+        quit_text_rect = quit_text.get_rect(center=quit_button.center)
+        background.blit(quit_text, quit_text_rect)
+        
+        pygame.display.flip()
+        clock.tick(60)
 
-    if not is_open:
-        # CLOSED 
-        for y in range(rect.top + 8, rect.bottom - 8, 20):
-            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
-    else:
-        # OPEN 
-        
-        # top bars
-        for y in range(rect.top + 5, rect.top + 20, 12):
-            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
-        
-        # bottom bars
-        for y in range(rect.bottom - 20, rect.bottom - 5, 12):
-            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+# Button rectangles (centered)
+start_button = pygame.Rect(600, 350, 300, 100)
+quit_button = pygame.Rect(600, 500, 300, 100)
 
 # Game loop
 clock = pygame.time.Clock()
 running = True
-damage_timer = 0.0
-game_over = False
-menu_state = "menu"
-sprint_cooldown = 0.0
+
+# Show menu first
+if not show_menu():
+    pygame.quit()
+    exit()
+
 while running:
-    dt = clock.tick(60) / 1000.0  # delta time in seconds
     for event in pygame.event.get():
+
+        #keyboard event
         if event.type == pygame.QUIT:
             running = False
-        if menu_state == "menu" and event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
-            start_button_rect = pygame.Rect(1500 // 2 - 100, 800 // 2 - 50, 200, 50)
-            quit_button_rect = pygame.Rect(1500 // 2 - 100, 800 // 2 + 50, 200, 50)
-            if start_button_rect.collidepoint(mouse_pos):
-                menu_state = "playing"
-            elif quit_button_rect.collidepoint(mouse_pos):
-                running = False
-        if game_over and event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
-            button_center = (1500 // 2, 800 // 2 + 100)
-            button_rect = pygame.Rect(button_center[0] - 100, button_center[1] - 25, 200, 50)
-            if button_rect.collidepoint(mouse_pos):
-                # Reset game
-                square.health = 100
-                square.stamina = 100
-                square.rect.x = 200
-                square.rect.y = 300
-                zombie.rect.x = 600
-                zombie.rect.y = 600
-                damage_timer = 0.0
-                sprint_cooldown = 0.0
-                game_over = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_g:
-                gate_is_open = not gate_is_open        
+                gate_is_open = not gate_is_open
 
-    if menu_state == "playing" and not game_over:
-        keys = pygame.key.get_pressed()
-        sprinting = (keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]) and square.stamina > 0 and sprint_cooldown <= 0
-        speed = 12 if sprinting else 6
-        moving = False
-        if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
-            square.moveLeft(speed)
-            moving = True
-        if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width: #move right 
-            square.moveRight(speed)
-            moving = True
-        if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
-            square.moveForward(speed)
-            moving = True
-        if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
-            square.moveBack(speed)
-            moving = True
-        if keys[pygame.K_a] and square.rect.x > 1:  # A = left 
-            square.moveLeft(speed)
-            moving = True
-        if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.height: # D = Right 
-            square.moveRight(speed)
-            moving = True
-        if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
-            square.moveForward(speed)
-            moving = True
-        if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
-            square.moveBack(speed)
-            moving = True
+        #mouse event
+        if event.type == pygame.MOUSEBUTTONDOWN:
+             if event.button == 1: #in python left click value = 1
+                square.attack(zombies_group, all_sprites_list)
 
 
+    keys = pygame.key.get_pressed()
+    old_x = square.rect.x 
+    old_y = square.rect.y 
 
-        # Stamina logic
-        if sprinting:
-            square.stamina -= 30 * dt  # faster depletion when sprinting
-        if square.stamina < square.max_stamina:
-            square.stamina += 10 * dt  # regenerate stamina
-        square.stamina = max(0, min(square.max_stamina, square.stamina))
-        
-        # Sprint cooldown
-        if square.stamina <= 0 and sprint_cooldown <= 0:
-            sprint_cooldown = 3.0
-        sprint_cooldown = max(0, sprint_cooldown - dt)
-        
-        #Update all sprites
-        all_sprites_list.update()
-        
-        # Check collision with zombie and lose health
-        if pygame.sprite.collide_rect(square, zombie):
-            damage_timer += dt
-            if damage_timer >= 1.0:
-                square.health -= 10
-                damage_timer = 0.0
-                square.health = max(0, square.health)
-                if square.health <= 0:
-                    game_over = True
-        else:
-            damage_timer = 0.0  # reset timer if not colliding
-    
+    speed = 10
+    #Fireball key
+    if keys[pygame.K_f]:
+         square.cast_fireball(all_sprites_list)
+    if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
+        if square.stamina > 0:
+            speed = 20              # sprint speed
+            square.stamina -= 1     # drain stamina each frame
+            print("stamina",round(square.stamina))
+    else:
+        square.regen_stamina()
+    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
+        square.moveLeft(10)
+    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width  : #move right 
+        square.moveRight(10)
+    if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
+        square.moveForward(speed)
+    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
+        square.moveBack(10)
+    if keys[pygame.K_a] :  # A = left 
+        square.moveLeft(10)
+    if keys[pygame.K_d] : # D = Right 
+        square.moveRight(speed)
+    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
+        square.moveForward(speed)
+    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
+        square.moveBack(speed)
+
+    if square.rect.x >= 1500 - square.rect.width:
+            room += 1
+            square.rect.x = 0
+    if square.rect.x < 1:
+         room -= 1 
+         square.rect.x = 1       
+
+
+    if room == 1:
+            background.fill(GREEN)
+    elif room == 2:
+            background.fill(blue)    
+    elif room == 3:
+            background.fill(black)
+
+    #Check if player id dead or not
+    if square.health <= 0:
+         print("Player died! Restarting game...")
+         reset_game()
+
+
+    #check collision with still obstacles (the wall)
+    for obstacle in obstacles:
+         if square.rect.colliderect(obstacle):
+              square.rect.x, square.rect.y = old_x, old_y 
+
+    #check collision with small obstacles inside the wall
+    for inside_obstacle in inside_obstacles:
+         if square.rect.colliderect(inside_obstacle):
+              square.rect.x, square.rect.y = old_x, old_y
+
+
+  #Update all sprites
+    all_sprites_list.update()
+
     # Clear background each frame
     background.fill(GREEN)
+    if room == 2:
+        background.fill(blue)
 
-    if menu_state == "menu":
-        # Draw main menu
-        title_font = pygame.font.Font(None, 74)
-        title_text = title_font.render("Zombie Slayer", True, RED)
-        title_rect = title_text.get_rect(center=(1500 // 2, 800 // 2 - 150))
-        background.blit(title_text, title_rect)
+    # Draw obstacles After background but BEFORE SPRITES   
+    for obstacle in obstacles:
+         pygame.draw.rect(background, (0, 0, 0), obstacle)
 
-        button_font = pygame.font.Font(None, 36)
-        
-        # Start Game button
-        start_button_rect = pygame.Rect(1500 // 2 - 100, 800 // 2 - 50, 200, 50)
-        pygame.draw.rect(background, light_green, start_button_rect)
-        start_text = button_font.render("Start Game", True, black)
-        start_text_rect = start_text.get_rect(center=start_button_rect.center)
-        background.blit(start_text, start_text_rect)
-        
-        # Quit Game button
-        quit_button_rect = pygame.Rect(1500 // 2 - 100, 800 // 2 + 50, 200, 50)
-        pygame.draw.rect(background, light_green, quit_button_rect)
-        quit_text = button_font.render("Quit Game", True, black)
-        quit_text_rect = quit_text.get_rect(center=quit_button_rect.center)
-        background.blit(quit_text, quit_text_rect)
-        
-    elif menu_state == "playing":
-        if not game_over:
-            # Draw sprites
-            all_sprites_list.update()
-            all_sprites_list.draw(background)
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
 
-            draw_gate(background, gate_rect, gate_is_open)
+    for inside_obstacle in inside_obstacles:
+         pygame.draw.rect(background, (0, 0, 150), inside_obstacle )     
+           
+    draw_gate(background, gate_rect, gate_is_open)
 
-            # health bar
-            health_bar_width = 200
-            health_bar_height = 20
-            health_ratio = square.health / square.max_health
-            pygame.draw.rect(background, RED, (10, 10, health_bar_width, health_bar_height))
-            pygame.draw.rect(background, light_green, (10, 10, health_bar_width * health_ratio, health_bar_height))
+    # Draw UI
+    background.blit(healthui_image, (0, 85))
+    background.blit(staminaui_image, (260,101))
 
-            # stamina bar
-            stamina_bar_width = 200
-            stamina_bar_height = 20
-            stamina_ratio = square.stamina / square.max_stamina
-            pygame.draw.rect(background, black, (10, 40, stamina_bar_width, stamina_bar_height))
-            pygame.draw.rect(background, blue, (10, 40, stamina_bar_width * stamina_ratio, stamina_bar_height))
-        else:
-            # game over screen
-            font = pygame.font.Font(None, 74)
-            text = font.render("Game Over", True, RED)
-            text_rect = text.get_rect(center=(1500 // 2, 800 // 2))
-            background.blit(text, text_rect)
-
-            # restart button
-            button_center = (1500 // 2, 800 // 2 + 100)
-            button_rect = pygame.Rect(button_center[0] - 100, button_center[1] - 25, 200, 50)
-            pygame.draw.rect(background, light_green, button_rect)
-            button_font = pygame.font.Font(None, 36)
-            button_text = button_font.render("Restart", True, black)
-            button_text_rect = button_text.get_rect(center=button_center)
-            background.blit(button_text, button_text_rect)
-
+    # Draw sprites
+    all_sprites_list.update()
+    all_sprites_list.draw(background)
     pygame.display.flip()
+    clock.tick(60)
 
+    # Draw obstacles After background but BEFORE SPRITES   
+    for obstacle in obstacles:
+         pygame.draw.rect(background, (0, 0, 0), obstacle)
 #testing git lmao 
 
 pygame.quit()
