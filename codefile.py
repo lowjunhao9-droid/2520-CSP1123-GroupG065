@@ -410,6 +410,8 @@ while running:
               square.rect.x, square.rect.y = old_x, old_y
 
 
+
+
   #Update all sprites
     all_sprites_list.update()
 
