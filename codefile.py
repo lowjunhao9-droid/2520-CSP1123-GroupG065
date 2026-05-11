@@ -94,15 +94,19 @@ class Player(pygame.sprite.Sprite):
 
     def moveRight(self, pixels):
         self.rect.x += pixels
+        
 
     def moveLeft(self, pixels):
         self.rect.x -= pixels
+        
 
     def moveForward(self, speed):
         self.rect.y -= speed   # up
+       
 
     def moveBack(self, speed):
         self.rect.y += speed   # down
+        
 
     def attack(self, zombies_group, all_sprites_list):
         #spawn visible slash
