@@ -71,7 +71,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
         #Load player image
         self.image = pygame.image.load("player.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (200,200))
+        self.image = pygame.transform.scale(self.image, (100,100))
         self.fireball_cooldown = 500 #0.5s cooldown
         self.last_fireball_time = 0
 
@@ -288,21 +288,21 @@ while running:
             print("stamina",round(square.stamina))
     else:
         square.regen_stamina()
-    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
-        square.moveLeft(10)
-    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width  : #move right 
-        square.moveRight(10)
-    if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
-        square.moveForward(speed)
-    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
-        square.moveBack(10)
-    if keys[pygame.K_a] :  # A = left 
-        square.moveLeft(10)
-    if keys[pygame.K_d] : # D = Right 
+    if keys[pygame.K_LEFT] and square.rect.x > 30: #move left 
+        square.moveLeft(speed)
+    if keys[pygame.K_RIGHT]  and square.rect.x < 1500 - square.rect.width - 30 : #move right 
         square.moveRight(speed)
-    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
+    if keys[pygame.K_UP]  and square.rect.y > 60:     # move upward 
         square.moveForward(speed)
-    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
+    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height - 30 : #move down 
+        square.moveBack(speed)
+    if keys[pygame.K_a] and square.rect.x  > 30:  # A = left 
+        square.moveLeft(speed)
+    if keys[pygame.K_d] and square.rect.x < 1500 - square.rect.width - 30: # D = Right 
+        square.moveRight(speed)
+    if keys[pygame.K_w] and square.rect.y > 60 : # W = Up 
+        square.moveForward(speed)
+    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height -30 :  # S = down 
         square.moveBack(speed)
 
     if square.rect.x >= 1500 - square.rect.width:
@@ -326,6 +326,7 @@ while running:
          print("Player died! Restarting game...")
          reset_game()
 
+    collision = False
 
     #check collision with still obstacles (the wall)
     for obstacle in obstacles:
@@ -338,6 +339,27 @@ while running:
               square.rect.x, square.rect.y = old_x, old_y
 
 
+    if not collision:
+         for inside_obstacle in inside_obstacles:
+              if square.rect.colliderect(inside_obstacle):
+                   collision = True 
+                   break
+              
+    if collision:
+         square.rect.x = old_x
+         square.rect.y = old_y          
+
+
+    if room == 1:
+            background.fill(GREEN)
+    elif room == 2:
+            background.fill(blue)    
+    elif room == 3:
+            background.fill(black)
+ 
+ 
+ 
+ 
   #Update all sprites
     all_sprites_list.update()
 
