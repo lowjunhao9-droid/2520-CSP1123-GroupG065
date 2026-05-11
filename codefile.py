@@ -38,7 +38,7 @@ inside_obstacles =[
      pygame.Rect(410, 200, 530, 50),
      pygame.Rect(1100, 200, 150, 40),
      pygame.Rect(1250, 200, 40, 150),
-     pygame.Rect(1250, 700, 110, 130),
+     pygame.Rect(1250, 700, 90, 100),
      
 ]
 
