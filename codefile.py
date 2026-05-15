@@ -38,7 +38,7 @@ inside_obstacles =[
      pygame.Rect(410, 200, 530, 50),
      pygame.Rect(1100, 200, 150, 40),
      pygame.Rect(1250, 200, 40, 150),
-     pygame.Rect(1250, 700, 110, 130),
+     pygame.Rect(1250, 700, 90, 100),
      
 ]
 
@@ -70,10 +70,18 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         #Load player image
-        self.image = pygame.image.load("player.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (200,200))
+        player_size = (200,200)
+        self.images =  {
+            "up": pygame.transform.scale(pygame.image.load("player_up.png").convert_alpha(), player_size),
+            "down": pygame.transform.scale(pygame.image.load("player_down.png").convert_alpha(), player_size),
+            "left": pygame.transform.scale(pygame.image.load("player_left.png").convert_alpha(), player_size),
+            "right": pygame.transform.scale(pygame.image.load("player_right.png").convert_alpha(), player_size),
+        }
+        
         self.fireball_cooldown = 500 #0.5s cooldown
         self.last_fireball_time = 0
+        self.facing = "right" #default
+        self.image = self.images[self.facing]
 
         #Stats
         self.rect = self.image.get_rect()
@@ -94,15 +102,24 @@ class Player(pygame.sprite.Sprite):
 
     def moveRight(self, pixels):
         self.rect.x += pixels
+        self.facing = "right"
+        self.update_image()
 
     def moveLeft(self, pixels):
         self.rect.x -= pixels
+        self.facing = "left"
+        self.update_image()
 
     def moveForward(self, speed):
         self.rect.y -= speed   # up
+        self.facing = "up"
+        self.update_image()
+       
 
     def moveBack(self, speed):
         self.rect.y += speed   # down
+        self.facing = "down"
+        self.update_image()
 
     def attack(self, zombies_group, all_sprites_list):
         #spawn visible slash
@@ -121,9 +138,17 @@ class Player(pygame.sprite.Sprite):
         if current_time - self.last_fireball_time >= self.fireball_cooldown:
             self.last_fireball_time = current_time
 
-            #Direction (simple:always right for now)
-            dx,dy = 1,0
+            #Direction (based on facing)
+            if self.facing == "right":
+                 dx,dy = 1, 0
+            elif self.facing == "left":
+                 dx,dy = -1, 0
+            elif self.facing == "up":
+                 dx,dy = 0, -1
+            elif self.facing == "down":
+                 dx,dy = 0, 1
             fireball = Fireball(self.rect.centerx,self.rect.centery,(dx,dy))
+            
             all_sprites_list.add(fireball)
             print("Fireball cast")
         
@@ -132,6 +157,9 @@ class Player(pygame.sprite.Sprite):
     def die(self):
         print("Player dead")
         self.kill() # remove player sprite
+
+    def update_image(self):
+         self.image = self.images[self.facing]
 
 
 
@@ -181,21 +209,36 @@ class Zombie(pygame.sprite.Sprite):
 
 class Attack(pygame.sprite.Sprite):
      def __init__(self, player, duration=200):
-          super().__init__()
-          #Load slash      
-          self.image= pygame.image.load("slash2.png").convert_alpha()
+        super().__init__()
+        #Load slash      
+        self.original_image= pygame.image.load("slash2.png").convert_alpha()
+        #Scale the image
+        self.original_image = pygame.transform.scale(self.original_image,(120,120))
 
-          #Scale the image
-          self.image = pygame.transform.scale(self.image,(120,120))
+        #Position of the slash
+        if player.facing == "right":
+           self.image = self.original_image
+           self.rect = self.image.get_rect(midleft=player.rect.midright)
 
-          #Position the slash just in front of the player
-          self.rect = self.image.get_rect()
-          self.rect.midleft = (player.rect.midright[0] - 100, player.rect.midright[1])
+        elif player.facing == "left":
+             self.image = pygame.transform.flip(self.original_image,True,False)
+             self.rect = self.image.get_rect(midright=player.rect.midleft)
+        
+        elif player.facing == "up":
+             self.image = pygame.transform.rotate(self.original_image,90)
+             self.rect = self.image.get_rect(midbottom=player.rect.midtop)
+        
+        elif player.facing == "down":
+             self.image = pygame.transform.rotate(self.original_image,-90)
+             self.rect = self.image.get_rect(midtop=player.rect.midbottom)
 
 
-          #Track time
-          self.spawn_time = pygame.time.get_ticks()
-          self.duration = duration
+    
+
+
+        #Track time
+        self.spawn_time = pygame.time.get_ticks()
+        self.duration = duration
 
      def update(self):
 
@@ -207,8 +250,20 @@ class Attack(pygame.sprite.Sprite):
 class Fireball(pygame.sprite.Sprite):
     def __init__(self,x,y,direction,speed=15,damage=30):
         super().__init__()
-        self.image = pygame.image.load("fireball.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image,(200,200))
+        base_image = pygame.image.load("fireball.png").convert_alpha()
+        base_image = pygame.transform.scale(base_image,(200,200))
+
+        #Rotate or flip based on direction
+        if direction == (1,0): #right
+             self.image = base_image
+        elif direction == (-1,0): #left
+             self.image = pygame.transform.flip(base_image,True,False)
+        elif direction == (0,-1): # up
+             self.image = pygame.transform.rotate(base_image,90)
+        elif direction == (0,1): #down
+             self.image = pygame.transform.rotate(base_image, -90)
+         
+     
 
         self.rect = self.image.get_rect(center=(x,y))
         self.direction = direction #(dc,dy) normalized vector
@@ -281,6 +336,7 @@ while running:
     #Fireball key
     if keys[pygame.K_f]:
          square.cast_fireball(all_sprites_list)
+    
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
         if square.stamina > 0:
             speed = 20              # sprint speed
@@ -288,22 +344,16 @@ while running:
             print("stamina",round(square.stamina))
     else:
         square.regen_stamina()
-    if keys[pygame.K_LEFT] and square.rect.x > 1: #move left 
-        square.moveLeft(10)
-    if keys[pygame.K_RIGHT] and square.rect.x < 1500 - square.rect.width  : #move right 
-        square.moveRight(10)
-    if keys[pygame.K_UP] and square.rect.y > 1:     # move upward 
-        square.moveForward(speed)
-    if keys[pygame.K_DOWN] and square.rect.y < 1000 - square.rect.height: #move down 
-        square.moveBack(10)
-    if keys[pygame.K_a] :  # A = left 
-        square.moveLeft(10)
-    if keys[pygame.K_d] : # D = Right 
-        square.moveRight(speed)
-    if keys[pygame.K_w] and square.rect.y > 1: # W = Up 
-        square.moveForward(speed)
-    if keys[pygame.K_s] and square.rect.y < 1000 - square.rect.height:  # S = down 
-        square.moveBack(speed)
+    if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+         square.moveLeft(speed)
+    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+         square.moveRight(speed)
+    elif keys[pygame.K_UP] or keys[pygame.K_w]:
+         square.moveForward(speed)
+    elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+         square.moveBack(speed)
+        
+    
 
     if square.rect.x >= 1500 - square.rect.width:
             room += 1
@@ -326,6 +376,7 @@ while running:
          print("Player died! Restarting game...")
          reset_game()
 
+    collision = False
 
     #check collision with still obstacles (the wall)
     for obstacle in obstacles:
@@ -338,6 +389,27 @@ while running:
               square.rect.x, square.rect.y = old_x, old_y
 
 
+    if not collision:
+         for inside_obstacle in inside_obstacles:
+              if square.rect.colliderect(inside_obstacle):
+                   collision = True 
+                   break
+              
+    if collision:
+         square.rect.x = old_x
+         square.rect.y = old_y          
+
+
+    if room == 1:
+            background.fill(GREEN)
+    elif room == 2:
+            background.fill(blue)    
+    elif room == 3:
+            background.fill(black)
+ 
+ 
+ 
+ 
   #Update all sprites
     all_sprites_list.update()
 
