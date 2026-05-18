@@ -10,6 +10,7 @@ pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
 # Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
+menu_background = pygame.image.load("Menu.png").convert()
 
 # Colors
 GREEN = (0,100,0)
@@ -295,7 +296,7 @@ def show_menu():
                 if quit_button.collidepoint(mouse_pos):
                     return False
         
-        background.fill((GREEN))
+        background.blit(menu_background, (0, 0))
         
         # Title (centered)
         title = font_large.render("ZOMBIE SLAYER", True, (255, 0, 0))
@@ -410,8 +411,6 @@ while running:
               square.rect.x, square.rect.y = old_x, old_y
 
 
-
-
   #Update all sprites
     all_sprites_list.update()
 
@@ -419,6 +418,10 @@ while running:
     background.fill(GREEN)
     if room == 2:
         background.fill(blue)
+
+    # health and stamina bar 
+    pygame.draw.rect(background, RED, (30, 100, 196, 35))
+    pygame.draw.rect(background, blue, (290, 108, 196, 20))
 
     # Draw obstacles After background but BEFORE SPRITES   
     for obstacle in obstacles:
