@@ -3,14 +3,26 @@ import random
 
 pygame.init()
 
-# Display window
-background = pygame.display.set_mode((1500, 1000))
+#=======Display window=========#
+#default screen size
+game_width = 1500
+game_height = 1000
+
+#make it resizable
+window = pygame.display.set_mode((game_width,game_height),pygame.RESIZABLE)
 pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
+
+#background
+background = pygame.Surface((game_width,game_height))
+#======================================#
+
 
 # Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 menu_background = pygame.image.load("Menu.png").convert()
+
+
 
 # Colors
 GREEN = (0,100,0)
@@ -51,10 +63,10 @@ inside_obstacles =[
 def check_collision_with_obstacles(sprite):
     """Check if a sprite collides with any obstacle"""
     for obstacle in obstacles:
-        if sprite.rect.colliderect(obstacle):
+        if sprite.hitbox.colliderect(obstacle):
             return True
     for inside_obstacle in inside_obstacles:
-        if sprite.rect.colliderect(inside_obstacle):
+        if sprite.hitbox.colliderect(inside_obstacle):
             return True
     return False
 
@@ -78,24 +90,18 @@ def draw_gate(surface, rect, is_open):
 
 # definition of reset game
 def reset_game():
-    global square, zombie, all_sprites_list, room
+    global square, room
     room = 1
-
-
-    # Reset sprite groups
-    all_sprites_list = pygame.sprite.Group()
-    zombies_group = pygame.sprite.Group()
-
-    # New player
-    square = Player()
+    all_sprites_list.empty() # clear all the sprites
+    zombies_group.empty()    # clear previous zombies
+    
+    square = Player()        # again to be a player
     square.rect.x = 100
     square.rect.y = 100
+    #manual centering hitbox of player
+    square.hitbox.center = square.rect.center 
     all_sprites_list.add(square)
-
-    # Spawn new zombies
     spawn_zombies(3)
-
-
 
  
 
@@ -174,7 +180,7 @@ class Player(pygame.sprite.Sprite):
 
         #Damage zombie in range - Use hitbox for better combat
         for zombie in zombies_group:
-            if self.hitbox.colliderect(zombie.rect):
+            if slash.rect.colliderect(zombie.rect):
                 zombie.health -= 10
                 print("Zombie hit! Health", zombie.health)
     
@@ -222,7 +228,7 @@ class Zombie(pygame.sprite.Sprite):
         self.last_attack_time = 0
         
         # Hitbox for zombie (slightly smaller for better movement)
-        self.hitbox = self.rect.inflate(-10, -10)
+        self.hitbox = self.rect.inflate(-20, -20)
     
     def update(self):
         # If zombie is dead, remove it
@@ -231,34 +237,36 @@ class Zombie(pygame.sprite.Sprite):
             return
 
         # Move toward player
-        if self.player:
+        if self.player and self.player.health > 0:
             # Store old position
-            old_x = self.rect.x
-            old_y = self.rect.y
+            self.hitbox.center = self.rect.center
+            
+            old_x = self.hitbox.x
+            old_y = self.hitbox.y
             
             # Calculate direction to player
             dx = self.player.rect.x - self.rect.x
             dy = self.player.rect.y - self.rect.y
             distance = (dx**2 + dy**2) ** 0.5
 
-            if distance != 0:
-                # Try moving in X direction first
-                self.rect.x += self.speed * dx/distance
-                self.hitbox.x = self.rect.x
+            if distance > 0:
+                #1. Try moving in X direction first
+                self.hitbox.x += int(self.speed * dx/distance)
+                # Check collision with obstacles
+                if check_collision_with_obstacles(self):
+                    self.hitbox.x = old_x # Undo X movement
+                    
+                
+                #2. Try moving in Y direction
+                self.hitbox.y += int(self.speed * dy/distance)
+                
                 
                 # Check collision with obstacles
                 if check_collision_with_obstacles(self):
-                    self.rect.x = old_x  # Undo X movement
-                    self.hitbox.x = old_x
-                
-                # Try moving in Y direction
-                self.rect.y += self.speed * dy/distance
-                self.hitbox.y = self.rect.y
-                
-                # Check collision with obstacles
-                if check_collision_with_obstacles(self):
-                    self.rect.y = old_y  # Undo Y movement
-                    self.hitbox.y = old_y
+                    self.hitbox.y = old_y  # Undo Y movement
+                    
+                #3. Apply position to render image
+                self.rect.center = self.hitbox.center
 
             # Attack if touching player
             if self.rect.colliderect(self.player.rect):
@@ -289,7 +297,8 @@ class Attack(pygame.sprite.Sprite):
         elif player.facing == "down":
             self.image = pygame.transform.rotate(self.original_image, -90)
             self.rect = self.image.get_rect(midtop=player.rect.midbottom)
-
+        
+        self.hitbox = self.rect
         #Track time
         self.spawn_time = pygame.time.get_ticks()
         self.duration = duration
@@ -321,11 +330,18 @@ class Fireball(pygame.sprite.Sprite):
         self.speed = speed
         self.damage = damage
 
+        self.hitbox = self.rect
+
     def update(self):
         #move fireball
         self.rect.x += int(self.direction[0] * self.speed)
         self.rect.y += int(self.direction[1] * self.speed)
 
+        #if collison with wall it will gone
+        if check_collision_with_obstacles(self):
+            self.kill()
+            return
+        
         #Check collision with zombies
         for zombie in zombies_group:
             if self.rect.colliderect(zombie.rect):
@@ -359,8 +375,7 @@ def spawn_zombies(num_zombies=5):
         while not valid_position and attempts < 50:
             zombie.rect.x = random.randint(100, 1400)
             zombie.rect.y = random.randint(100, 900)
-            zombie.hitbox.x = zombie.rect.x
-            zombie.hitbox.y = zombie.rect.y
+            zombie.hitbox.center = zombie.rect.center
             if not check_collision_with_obstacles(zombie):
                 valid_position = True
             attempts += 1
@@ -373,16 +388,31 @@ spawn_zombies(3)
 
 # Main Menu
 def show_menu():
+    global window,background
     font_large = pygame.font.Font(None, 80)
     font_button = pygame.font.Font(None, 50)
     
     menu_running = True
     while menu_running:
+        w_size = window.get_size()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            if event.type == pygame.VIDEORESIZE:
+                window = pygame.display.set_mode(
+                    (event.w, event.h), pygame.RESIZABLE
+                )
+
             if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = event.pos
+                # 
+                real_x, real_y = event.pos
+                virtual_x = int(real_x * (game_width / w_size[0]))
+                virtual_y = int(
+                    real_y * (game_height / w_size[1])
+                )
+                mouse_pos = (virtual_x, virtual_y)
+
                 if start_button.collidepoint(mouse_pos):
                     return True
                 if quit_button.collidepoint(mouse_pos):
@@ -407,8 +437,13 @@ def show_menu():
         quit_text_rect = quit_text.get_rect(center=quit_button.center)
         background.blit(quit_text, quit_text_rect)
         
+        #put menu on the screen
+        window.blit(background, (0, 0))
+        
         pygame.display.flip()
         clock.tick(60)
+
+
 
 # Button rectangles (centered)
 start_button = pygame.Rect(600, 350, 300, 100)
@@ -428,6 +463,9 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+        if event.type == pygame.VIDEORESIZE:
+            window = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE)
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # left click
@@ -531,7 +569,8 @@ while running:
     # Draw sprites
     all_sprites_list.draw(background)
     
-    
+    #able to scale window
+    window.blit(background, (0, 0)) 
     
     pygame.display.flip()
     clock.tick(60)
