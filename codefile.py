@@ -5,7 +5,12 @@ pygame.init()
 
 # Display window
 background = pygame.display.set_mode((1500, 1000))
-pygame.display.set_caption("Zombie Slayer: Blade Survival")
+pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
+
+# Load UI images
+healthui_image = pygame.image.load("healthui.png").convert_alpha()
+staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
+menu_background = pygame.image.load("Menu.png").convert()
 
 # Colors
 GREEN = (0,100,0)
@@ -38,7 +43,8 @@ inside_obstacles =[
      pygame.Rect(410, 200, 530, 50),
      pygame.Rect(1100, 200, 150, 40),
      pygame.Rect(1250, 200, 40, 150),
-     pygame.Rect(1250, 700, 90, 100),
+     pygame.Rect(1250, 700, 110, 130),
+     
 ]
 
 # COLLISION HELPER FUNCTION
@@ -52,10 +58,29 @@ def check_collision_with_obstacles(sprite):
             return True
     return False
 
+gate_is_open = False
+
+# Gate position (right side)
+gate_rect = pygame.Rect(1420, 360, 60, 300)
+
+def draw_gate(surface, rect, is_open):
+    pygame.draw.rect(surface, (90, 90, 90), rect)
+
+    if not is_open:
+        for y in range(rect.top + 8, rect.bottom - 8, 20):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+    else:
+        for y in range(rect.top + 5, rect.top + 20, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+        for y in range(rect.bottom - 20, rect.bottom - 5, 12):
+            pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+
+
 # definition of reset game
 def reset_game():
-    global square, all_sprites_list, zombies_group, room
+    global square, zombie, all_sprites_list, room
     room = 1
+
 
     # Reset sprite groups
     all_sprites_list = pygame.sprite.Group()
@@ -70,6 +95,11 @@ def reset_game():
     # Spawn new zombies
     spawn_zombies(3)
 
+
+
+ 
+
+    
 # Sprite Class
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -111,6 +141,7 @@ class Player(pygame.sprite.Sprite):
                 self.stamina += 10
                 print("Stamina", self.stamina)
             self.last_regen_time = current_time
+                
 
     def moveRight(self, pixels):
         self.rect.x += pixels
@@ -340,9 +371,58 @@ def spawn_zombies(num_zombies=5):
 # Spawn initial zombies
 spawn_zombies(3)
 
+# Main Menu
+def show_menu():
+    font_large = pygame.font.Font(None, 80)
+    font_button = pygame.font.Font(None, 50)
+    
+    menu_running = True
+    while menu_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                if start_button.collidepoint(mouse_pos):
+                    return True
+                if quit_button.collidepoint(mouse_pos):
+                    return False
+        
+        background.blit(menu_background, (0, 0))
+        
+        # Title (centered)
+        title = font_large.render("ZOMBIE SLAYER", True, (255, 0, 0))
+        title_rect = title.get_rect(center=(750, 200))
+        background.blit(title, title_rect)
+        
+        # Start Button
+        pygame.draw.rect(background, (0, 200, 0), start_button)
+        start_text = font_button.render("START", True, (0, 0, 0))
+        start_text_rect = start_text.get_rect(center=start_button.center)
+        background.blit(start_text, start_text_rect)
+        
+        # Quit Button
+        pygame.draw.rect(background, (200, 0, 0), quit_button)
+        quit_text = font_button.render("QUIT", True, (255, 255, 255))
+        quit_text_rect = quit_text.get_rect(center=quit_button.center)
+        background.blit(quit_text, quit_text_rect)
+        
+        pygame.display.flip()
+        clock.tick(60)
+
+# Button rectangles (centered)
+start_button = pygame.Rect(600, 350, 300, 100)
+quit_button = pygame.Rect(600, 500, 300, 100)
+
 # Game loop
 clock = pygame.time.Clock()
 running = True
+
+
+# Show menu first
+if not show_menu():
+    pygame.quit()
+    exit()
 
 while running:
     for event in pygame.event.get():
@@ -442,14 +522,16 @@ while running:
     for inside_obstacle in inside_obstacles:
         pygame.draw.rect(background, (0, 0, 150), inside_obstacle)
     
+    draw_gate(background, gate_rect, gate_is_open)
+
+    # Draw UI
+    background.blit(healthui_image, (0, 85))
+    background.blit(staminaui_image, (260,101))
+    
     # Draw sprites
     all_sprites_list.draw(background)
     
-    # DEBUG: Draw hitboxes (remove in final game)
-    # Uncomment to see collision boxes
-    # pygame.draw.rect(background, (255, 0, 0), square.hitbox, 2)  # Player hitbox (red)
-    # for zombie in zombies_group:
-    #     pygame.draw.rect(background, (255, 255, 0), zombie.rect, 2)  # Zombie hitbox (yellow)
+    
     
     pygame.display.flip()
     clock.tick(60)
