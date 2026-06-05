@@ -125,16 +125,15 @@ class Player(pygame.sprite.Sprite):
         self.image = self.images[self.facing]
 
         #Stats
-        self.rect = self.image.get_rect()
-        
-        # HITBOX SYSTEM - Smaller than visual sprite for better movement
+        self.rect = self.image.get_rect() 
         self.hitbox = self.rect.inflate(-20, -20)  # 100x100 -> 80x80 hitbox
         
         self.health = 100
         self.stamina = 100
         self.last_regen_time = pygame.time.get_ticks()
         self.regen_delay = 1000
-
+        
+        self.is_blocking = False #Track if player is holding the block button
     def update(self):
         # Keep hitbox centered on visual sprite
         self.hitbox.center = self.rect.center
@@ -150,24 +149,28 @@ class Player(pygame.sprite.Sprite):
                 
 
     def moveRight(self, pixels):
+        if self.is_blocking: return #Freeze position if blocking
         self.rect.x += pixels
         self.hitbox.x += pixels
         self.facing = "right"
         self.update_image()
 
     def moveLeft(self, pixels):
+        if self.is_blocking: return
         self.rect.x -= pixels
         self.hitbox.x -= pixels
         self.facing = "left"
         self.update_image()
 
     def moveForward(self, speed):
+        if self.is_blocking: return
         self.rect.y -= speed
         self.hitbox.y -= speed
         self.facing = "up"
         self.update_image()
 
     def moveBack(self, speed):
+        if self.is_blocking: return
         self.rect.y += speed
         self.hitbox.y += speed
         self.facing = "down"
@@ -211,7 +214,12 @@ class Player(pygame.sprite.Sprite):
         self.kill()
 
     def update_image(self):
-        self.image = self.images[self.facing]
+        if self.is_blocking:
+            block_img = self.images[self.facing].copy()
+            block_img.fill((150, 0, 255, 100), special_flags=pygame.BLEND_RGBA_MULT)
+            self.image = block_img
+        else:
+            self.image = self.images[self.facing]
 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(100,100), speed=2, player=None):
@@ -272,8 +280,13 @@ class Zombie(pygame.sprite.Sprite):
             if self.rect.colliderect(self.player.rect):
                 current_time = pygame.time.get_ticks()
                 if current_time - self.last_attack_time >= self.attack_cooldown:
-                    self.player.health -= 10
-                    print("Player hit! Health:", self.player.health)
+                    if self.player.is_blocking:
+                        damage_taken = 10 * 0.10  # 10% of 10 base damage = 1 damage
+                        self.player.health -= damage_taken
+                        print(f"Attack Blocked! Only took 10% damage ({damage_taken}). Player Health: {self.player.health}")
+                    else:
+                        self.player.health -= 10
+                        print("Player hit! Full damage taken. Health:", self.player.health)
                     self.last_attack_time = current_time
 
 class Attack(pygame.sprite.Sprite):
@@ -480,6 +493,13 @@ while running:
     old_hitbox_y = square.hitbox.y
 
     speed = 10
+    # tap B to block
+    if keys[pygame.K_b]:
+        square.is_blocking = True
+        square.update_image()
+    else:
+        square.is_blocking = False
+        square.update_image()
     
     # Fireball key
     if keys[pygame.K_f]:
