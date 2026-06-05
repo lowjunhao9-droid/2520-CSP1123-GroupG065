@@ -307,7 +307,7 @@ class Zombie(pygame.sprite.Sprite):
 class FasterZombie(Zombie):
     def __init__(self,image_file,scale=(90,90),speed=5,player=None):
         super().__init__(image_file,scale,speed,player)
-        self.health = 60
+        self.heath = 60
 
 class Attack(pygame.sprite.Sprite):
     def __init__(self, player, duration=200):
@@ -415,21 +415,6 @@ def spawn_zombies(num_normal=3,num_faster=2):
         
         zombies_group.add(zombie)
         all_sprites_list.add(zombie)
-    
-    for i in range(num_faster):
-        fast_zombie = FasterZombie("FastZombie.png", scale=(90,90), speed=5, player=square)
-        valid_position = False
-        attempts = 0
-        while not valid_position and attempts < 50:
-            fast_zombie.rect.x = random.randint(100,1400)
-            fast_zombie.rect.y = random.randint(100,900)
-            fast_zombie.hitbox.center = fast_zombie.rect.center
-            if not check_collision_with_obstacles(fast_zombie):
-                valid_position = True
-            attempts += 1
-        
-        zombies_group.add(fast_zombie)
-        all_sprites_list.add(fast_zombie)
 
 # Spawn initial zombies
 spawn_zombies(3,2)
