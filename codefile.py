@@ -134,10 +134,7 @@ class Player(pygame.sprite.Sprite):
         self.regen_delay = 1000
         
         self.is_blocking = False #Track if player is holding the block button
-    def update(self):
-        # Keep hitbox centered on visual sprite
-        self.hitbox.center = self.rect.center
-        self.regen_stamina()
+    
 
     def regen_stamina(self):
         current_time = pygame.time.get_ticks()
@@ -213,13 +210,31 @@ class Player(pygame.sprite.Sprite):
         print("Player dead")
         self.kill()
 
-    def update_image(self):
+    def update(self):
+        # Keep hitbox centered on visual sprite
+        self.hitbox.center = self.rect.center
+        self.regen_stamina()
+        self.update_image() #make sure every frame of block have been updated
+
+    def update_image(self):        
+        base_img = self.images[self.facing].copy()
+        
+        #2. hold b will have a semi-transparent circular shield
         if self.is_blocking:
-            block_img = self.images[self.facing].copy()
-            block_img.fill((150, 0, 255, 100), special_flags=pygame.BLEND_RGBA_MULT)
-            self.image = block_img
-        else:
-            self.image = self.images[self.facing]
+            #create a canvas the same size
+            shield_surface = pygame.Surface(base_img.get_size(), pygame.SRCALPHA)
+            
+            #Draw a semi-transparent sky blue circular cover inner ring (Color: Sky Blue, Opacity: 100)
+            pygame.draw.circle(shield_surface, (0, 191, 255, 100), (50, 50), 48)  
+            # Draw the edge boundary of a bright purple circle (Color: bright purple, Line width: 4)
+            pygame.draw.circle(shield_surface, (138, 43, 226, 225), (50, 50), 48, 4) 
+            
+            # Blit the shield canvas onto the character layer
+            base_img.blit(shield_surface, (0, 0))
+            
+        
+        self.image = base_img
+            
 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(100,100), speed=2, player=None):
