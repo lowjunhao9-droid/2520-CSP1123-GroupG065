@@ -3,14 +3,29 @@ import random
 
 pygame.init()
 
-# Display window
-background = pygame.display.set_mode((1500, 1000))
+#=======Display window=========#
+#default screen size
+game_width = 1500
+game_height = 1000
+
+#make it resizable
+window = pygame.display.set_mode((game_width,game_height),pygame.RESIZABLE)
 pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
 
-# Load UI images
+#background
+background = pygame.Surface((game_width,game_height))
+#======================================#
+
+
+# Load UI images fireball
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
-menu_background = pygame.image.load("Menu.png").convert()
+fireui_image = pygame.image.load("fireui.png").convert_alpha()
+menu_background = pygame.image.load("Menu1600.png").convert()
+zombs_image = pygame.image.load("zombs.png").convert_alpha()
+ggs_image = pygame.image.load("GGs.png").convert_alpha()
+
+
 
 # Colors
 GREEN = (0,100,0)
@@ -51,10 +66,10 @@ inside_obstacles =[
 def check_collision_with_obstacles(sprite):
     """Check if a sprite collides with any obstacle"""
     for obstacle in obstacles:
-        if sprite.rect.colliderect(obstacle):
+        if sprite.hitbox.colliderect(obstacle):
             return True
     for inside_obstacle in inside_obstacles:
-        if sprite.rect.colliderect(inside_obstacle):
+        if sprite.hitbox.colliderect(inside_obstacle):
             return True
     return False
 
@@ -78,24 +93,18 @@ def draw_gate(surface, rect, is_open):
 
 # definition of reset game
 def reset_game():
-    global square, zombie, all_sprites_list, room
+    global square, room
     room = 1
-
-
-    # Reset sprite groups
-    all_sprites_list = pygame.sprite.Group()
-    zombies_group = pygame.sprite.Group()
-
-    # New player
-    square = Player()
+    all_sprites_list.empty() # clear all the sprites
+    zombies_group.empty()    # clear previous zombies
+    
+    square = Player()        # again to be a player
     square.rect.x = 100
     square.rect.y = 100
+    #manual centering hitbox of player
+    square.hitbox.center = square.rect.center 
     all_sprites_list.add(square)
-
-    # Spawn new zombies
-    spawn_zombies(3)
-
-
+    spawn_zombies(3,2)#spawn 3 normal zombie and 2 fast zombie
 
  
 
@@ -119,20 +128,16 @@ class Player(pygame.sprite.Sprite):
         self.image = self.images[self.facing]
 
         #Stats
-        self.rect = self.image.get_rect()
-        
-        # HITBOX SYSTEM - Smaller than visual sprite for better movement
+        self.rect = self.image.get_rect() 
         self.hitbox = self.rect.inflate(-20, -20)  # 100x100 -> 80x80 hitbox
         
         self.health = 100
         self.stamina = 100
         self.last_regen_time = pygame.time.get_ticks()
         self.regen_delay = 1000
-
-    def update(self):
-        # Keep hitbox centered on visual sprite
-        self.hitbox.center = self.rect.center
-        self.regen_stamina()
+        
+        self.is_blocking = False #Track if player is holding the block button
+    
 
     def regen_stamina(self):
         current_time = pygame.time.get_ticks()
@@ -144,24 +149,28 @@ class Player(pygame.sprite.Sprite):
                 
 
     def moveRight(self, pixels):
+        if self.is_blocking: return #Freeze position if blocking
         self.rect.x += pixels
         self.hitbox.x += pixels
         self.facing = "right"
         self.update_image()
 
     def moveLeft(self, pixels):
+        if self.is_blocking: return
         self.rect.x -= pixels
         self.hitbox.x -= pixels
         self.facing = "left"
         self.update_image()
 
     def moveForward(self, speed):
+        if self.is_blocking: return
         self.rect.y -= speed
         self.hitbox.y -= speed
         self.facing = "up"
         self.update_image()
 
     def moveBack(self, speed):
+        if self.is_blocking: return
         self.rect.y += speed
         self.hitbox.y += speed
         self.facing = "down"
@@ -174,7 +183,7 @@ class Player(pygame.sprite.Sprite):
 
         #Damage zombie in range - Use hitbox for better combat
         for zombie in zombies_group:
-            if self.hitbox.colliderect(zombie.rect):
+            if slash.rect.colliderect(zombie.rect):
                 zombie.health -= 10
                 print("Zombie hit! Health", zombie.health)
     
@@ -204,8 +213,31 @@ class Player(pygame.sprite.Sprite):
         print("Player dead")
         self.kill()
 
-    def update_image(self):
-        self.image = self.images[self.facing]
+    def update(self):
+        # Keep hitbox centered on visual sprite
+        self.hitbox.center = self.rect.center
+        self.regen_stamina()
+        self.update_image() #make sure every frame of block have been updated
+
+    def update_image(self):        
+        base_img = self.images[self.facing].copy()
+        
+        #2. hold b will have a semi-transparent circular shield
+        if self.is_blocking:
+            #create a canvas the same size
+            shield_surface = pygame.Surface(base_img.get_size(), pygame.SRCALPHA)
+            
+            #Draw a semi-transparent sky blue circular cover inner ring (Color: Sky Blue, Opacity: 100)
+            pygame.draw.circle(shield_surface, (0, 191, 255, 100), (50, 50), 48)  
+            # Draw the edge boundary of a bright purple circle (Color: bright purple, Line width: 4)
+            pygame.draw.circle(shield_surface, (138, 43, 226, 225), (50, 50), 48, 4) 
+            
+            # Blit the shield canvas onto the character layer
+            base_img.blit(shield_surface, (0, 0))
+            
+        
+        self.image = base_img
+            
 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(100,100), speed=2, player=None):
@@ -222,7 +254,7 @@ class Zombie(pygame.sprite.Sprite):
         self.last_attack_time = 0
         
         # Hitbox for zombie (slightly smaller for better movement)
-        self.hitbox = self.rect.inflate(-10, -10)
+        self.hitbox = self.rect.inflate(-20, -20)
     
     def update(self):
         # If zombie is dead, remove it
@@ -231,42 +263,54 @@ class Zombie(pygame.sprite.Sprite):
             return
 
         # Move toward player
-        if self.player:
+        if self.player and self.player.health > 0:
             # Store old position
-            old_x = self.rect.x
-            old_y = self.rect.y
+            self.hitbox.center = self.rect.center
+            
+            old_x = self.hitbox.x
+            old_y = self.hitbox.y
             
             # Calculate direction to player
             dx = self.player.rect.x - self.rect.x
             dy = self.player.rect.y - self.rect.y
             distance = (dx**2 + dy**2) ** 0.5
 
-            if distance != 0:
-                # Try moving in X direction first
-                self.rect.x += self.speed * dx/distance
-                self.hitbox.x = self.rect.x
+            if distance > 0:
+                #1. Try moving in X direction first
+                self.hitbox.x += int(self.speed * dx/distance)
+                # Check collision with obstacles
+                if check_collision_with_obstacles(self):
+                    self.hitbox.x = old_x # Undo X movement
+                    
+                
+                #2. Try moving in Y direction
+                self.hitbox.y += int(self.speed * dy/distance)
+                
                 
                 # Check collision with obstacles
                 if check_collision_with_obstacles(self):
-                    self.rect.x = old_x  # Undo X movement
-                    self.hitbox.x = old_x
-                
-                # Try moving in Y direction
-                self.rect.y += self.speed * dy/distance
-                self.hitbox.y = self.rect.y
-                
-                # Check collision with obstacles
-                if check_collision_with_obstacles(self):
-                    self.rect.y = old_y  # Undo Y movement
-                    self.hitbox.y = old_y
+                    self.hitbox.y = old_y  # Undo Y movement
+                    
+                #3. Apply position to render image
+                self.rect.center = self.hitbox.center
 
             # Attack if touching player
             if self.rect.colliderect(self.player.rect):
                 current_time = pygame.time.get_ticks()
                 if current_time - self.last_attack_time >= self.attack_cooldown:
-                    self.player.health -= 10
-                    print("Player hit! Health:", self.player.health)
+                    if self.player.is_blocking:
+                        damage_taken = 10 * 0.10  # 10% of 10 base damage = 1 damage
+                        self.player.health -= damage_taken
+                        print(f"Attack Blocked! Only took 10% damage ({damage_taken}). Player Health: {self.player.health}")
+                    else:
+                        self.player.health -= 10
+                        print("Player hit! Full damage taken. Health:", self.player.health)
                     self.last_attack_time = current_time
+
+class FasterZombie(Zombie):
+    def __init__(self,image_file,scale=(90,90),speed=5,player=None):
+        super().__init__(image_file,scale,speed,player)
+        self.health = 60
 
 class Attack(pygame.sprite.Sprite):
     def __init__(self, player, duration=200):
@@ -276,7 +320,7 @@ class Attack(pygame.sprite.Sprite):
         #Scale the image
         self.original_image = pygame.transform.scale(self.original_image, (120,120))
 
-        #Position of the slash based on player facing
+        #Position of the slash based on player facing zombs.png
         if player.facing == "right":
             self.image = self.original_image
             self.rect = self.image.get_rect(midleft=player.rect.midright)
@@ -289,7 +333,8 @@ class Attack(pygame.sprite.Sprite):
         elif player.facing == "down":
             self.image = pygame.transform.rotate(self.original_image, -90)
             self.rect = self.image.get_rect(midtop=player.rect.midbottom)
-
+        
+        self.hitbox = self.rect
         #Track time
         self.spawn_time = pygame.time.get_ticks()
         self.duration = duration
@@ -321,11 +366,18 @@ class Fireball(pygame.sprite.Sprite):
         self.speed = speed
         self.damage = damage
 
+        self.hitbox = self.rect
+
     def update(self):
         #move fireball
         self.rect.x += int(self.direction[0] * self.speed)
         self.rect.y += int(self.direction[1] * self.speed)
 
+        #if collison with wall it will gone
+        if check_collision_with_obstacles(self):
+            self.kill()
+            return
+        
         #Check collision with zombies
         for zombie in zombies_group:
             if self.rect.colliderect(zombie.rect):
@@ -350,8 +402,8 @@ square.rect.y = 100
 all_sprites_list.add(square)
 
 # Function to spawn multiple zombies
-def spawn_zombies(num_zombies=5):
-    for i in range(num_zombies):
+def spawn_zombies(num_normal=3,num_faster=2):
+    for i in range(num_normal):
         zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
         # Spawn in valid positions (not inside obstacles)
         valid_position = False
@@ -359,30 +411,59 @@ def spawn_zombies(num_zombies=5):
         while not valid_position and attempts < 50:
             zombie.rect.x = random.randint(100, 1400)
             zombie.rect.y = random.randint(100, 900)
-            zombie.hitbox.x = zombie.rect.x
-            zombie.hitbox.y = zombie.rect.y
+            zombie.hitbox.center = zombie.rect.center
             if not check_collision_with_obstacles(zombie):
                 valid_position = True
             attempts += 1
         
         zombies_group.add(zombie)
         all_sprites_list.add(zombie)
+    
+    for i in range(num_faster):
+        fast_zombie = FasterZombie("FastZombie.png", scale=(90,90), speed=5, player=square)
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 50:
+            fast_zombie.rect.x = random.randint(100,1400)
+            fast_zombie.rect.y = random.randint(100,900)
+            fast_zombie.hitbox.center = fast_zombie.rect.center
+            if not check_collision_with_obstacles(fast_zombie):
+                valid_position = True
+            attempts += 1
+        
+        zombies_group.add(fast_zombie)
+        all_sprites_list.add(fast_zombie)
 
 # Spawn initial zombies
-spawn_zombies(3)
+spawn_zombies(3,2)
 
 # Main Menu
 def show_menu():
+    global window,background
     font_large = pygame.font.Font(None, 80)
     font_button = pygame.font.Font(None, 50)
     
     menu_running = True
     while menu_running:
+        w_size = window.get_size()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            if event.type == pygame.VIDEORESIZE:
+                window = pygame.display.set_mode(
+                    (event.w, event.h), pygame.RESIZABLE
+                )
+
             if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = event.pos
+                # 
+                real_x, real_y = event.pos
+                virtual_x = int(real_x * (game_width / w_size[0]))
+                virtual_y = int(
+                    real_y * (game_height / w_size[1])
+                )
+                mouse_pos = (virtual_x, virtual_y)
+
                 if start_button.collidepoint(mouse_pos):
                     return True
                 if quit_button.collidepoint(mouse_pos):
@@ -390,10 +471,10 @@ def show_menu():
         
         background.blit(menu_background, (0, 0))
         
-        # Title (centered)
-        title = font_large.render("ZOMBIE SLAYER", True, (255, 0, 0))
-        title_rect = title.get_rect(center=(750, 200))
-        background.blit(title, title_rect)
+        # Title (centered) replaced with image
+        zombs_scaled = pygame.transform.scale(zombs_image, (600, 200))
+        zombs_rect = zombs_scaled.get_rect(center=(750, 200))
+        background.blit(zombs_scaled, zombs_rect)
         
         # Start Button
         pygame.draw.rect(background, (0, 200, 0), start_button)
@@ -407,8 +488,13 @@ def show_menu():
         quit_text_rect = quit_text.get_rect(center=quit_button.center)
         background.blit(quit_text, quit_text_rect)
         
+        #put menu on the screen
+        window.blit(background, (0, 0))
+        
         pygame.display.flip()
         clock.tick(60)
+
+
 
 # Button rectangles (centered)
 start_button = pygame.Rect(600, 350, 300, 100)
@@ -417,6 +503,11 @@ quit_button = pygame.Rect(600, 500, 300, 100)
 # Game loop
 clock = pygame.time.Clock()
 running = True
+player_dead = False
+
+# Death screen button rectangles
+death_restart_button = pygame.Rect(450, 600, 200, 60)
+death_quit_button = pygame.Rect(850, 600, 200, 60)
 
 
 # Show menu first
@@ -429,9 +520,25 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        if event.type == pygame.VIDEORESIZE:
+            window = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE)
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_g:
+                gate_is_open = not gate_is_open
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # left click
-                square.attack(zombies_group, all_sprites_list)
+                if player_dead:
+                    # Handle death screen button clicks
+                    mouse_pos = event.pos
+                    if death_restart_button.collidepoint(mouse_pos):
+                        player_dead = False
+                        reset_game()
+                    elif death_quit_button.collidepoint(mouse_pos):
+                        running = False
+                else:
+                    square.attack(zombies_group, all_sprites_list)
 
     keys = pygame.key.get_pressed()
     
@@ -442,6 +549,13 @@ while running:
     old_hitbox_y = square.hitbox.y
 
     speed = 10
+    # tap B to block
+    if keys[pygame.K_b]:
+        square.is_blocking = True
+        square.update_image()
+    else:
+        square.is_blocking = False
+        square.update_image()
     
     # Fireball key
     if keys[pygame.K_f]:
@@ -452,7 +566,7 @@ while running:
         if square.stamina > 0:
             speed = 20
             square.stamina -= 1
-            print("stamina", round(square.stamina))
+            print("stamina", round(square.stamina)) 
     else:
         square.regen_stamina()
     
@@ -500,12 +614,16 @@ while running:
         square.rect.y = 100
     
     # Check if player is dead
-    if square.health <= 0:
-        print("Player died! Restarting game...")
-        reset_game()
+    if square.health <= 0 and not player_dead:
+        print("Player died! Showing death screen...")
+        player_dead = True
     
     # Update all sprites
     all_sprites_list.update()
+
+    # Open gate automatically when all zombies are gone
+    if len(zombies_group) == 0:
+        gate_is_open = True
     
     # Clear background based on room
     if room == 1:
@@ -515,6 +633,13 @@ while running:
     elif room == 3:
         background.fill(black)
     
+    # health and stamina bar  
+    health_width = int((square.health / 100) * 196)
+    pygame.draw.rect(background, RED, (30, 100, health_width, 35))
+    
+    stamina_width = int((square.stamina / 100) * 196)
+    pygame.draw.rect(background, blue, (290, 108, stamina_width, 20))
+
     # Draw obstacles
     for obstacle in obstacles:
         pygame.draw.rect(background, (0, 0, 0), obstacle)
@@ -527,11 +652,35 @@ while running:
     # Draw UI
     background.blit(healthui_image, (0, 85))
     background.blit(staminaui_image, (260,101))
+    fireui_x = 260 + staminaui_image.get_width() + 10
+    # Hide fire UI while a fireball exists
+    has_fireball = any(isinstance(s, Fireball) for s in all_sprites_list)
+    if not has_fireball:
+        background.blit(fireui_image, (fireui_x, 101))
     
     # Draw sprites
     all_sprites_list.draw(background)
     
+    # Draw GGs and buttons if player is dead
+    if player_dead:
+        ggs_scaled = pygame.transform.scale(ggs_image, (600, 400))
+        ggs_rect = ggs_scaled.get_rect(center=(750, 350))
+        background.blit(ggs_scaled, ggs_rect)
+        
+        # Draw death screen buttons
+        font_button = pygame.font.Font(None, 40)
+        pygame.draw.rect(background, (0, 200, 0), death_restart_button)
+        restart_text = font_button.render("RESTART", True, (0, 0, 0))
+        restart_text_rect = restart_text.get_rect(center=death_restart_button.center)
+        background.blit(restart_text, restart_text_rect)
+        
+        pygame.draw.rect(background, (200, 0, 0), death_quit_button)
+        quit_text = font_button.render("QUIT", True, (255, 255, 255))
+        quit_text_rect = quit_text.get_rect(center=death_quit_button.center)
+        background.blit(quit_text, quit_text_rect)
     
+    #able to scale window
+    window.blit(background, (0, 0)) 
     
     pygame.display.flip()
     clock.tick(60)
