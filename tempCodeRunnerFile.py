@@ -20,12 +20,7 @@ background = pygame.Surface((game_width,game_height))
 # Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
-fireui_image = pygame.image.load("fireui.png").convert_alpha()
-menu_background = pygame.image.load("Menu1600.png").convert()
-zombs_image = pygame.image.load("zombs.png").convert_alpha()
-ggs_image = pygame.image.load("GGs.png").convert_alpha()
-
-
+menu_background = pygame.image.load("Menu.png").convert()
 
 
 
@@ -312,7 +307,7 @@ class Zombie(pygame.sprite.Sprite):
 class FasterZombie(Zombie):
     def __init__(self,image_file,scale=(90,90),speed=5,player=None):
         super().__init__(image_file,scale,speed,player)
-        self.health = 60
+        self.heath = 60
 
 class Attack(pygame.sprite.Sprite):
     def __init__(self, player, duration=200):
@@ -322,7 +317,7 @@ class Attack(pygame.sprite.Sprite):
         #Scale the image
         self.original_image = pygame.transform.scale(self.original_image, (120,120))
 
-        #Position of the slash based on player facing zombs.png
+        #Position of the slash based on player facing
         if player.facing == "right":
             self.image = self.original_image
             self.rect = self.image.get_rect(midleft=player.rect.midright)
@@ -420,21 +415,6 @@ def spawn_zombies(num_normal=3,num_faster=2):
         
         zombies_group.add(zombie)
         all_sprites_list.add(zombie)
-    
-    for i in range(num_faster):
-        fast_zombie = FasterZombie("FastZombie.png", scale=(90,90), speed=5, player=square)
-        valid_position = False
-        attempts = 0
-        while not valid_position and attempts < 50:
-            fast_zombie.rect.x = random.randint(100,1400)
-            fast_zombie.rect.y = random.randint(100,900)
-            fast_zombie.hitbox.center = fast_zombie.rect.center
-            if not check_collision_with_obstacles(fast_zombie):
-                valid_position = True
-            attempts += 1
-        
-        zombies_group.add(fast_zombie)
-        all_sprites_list.add(fast_zombie)
 
 # Spawn initial zombies
 spawn_zombies(3,2)
@@ -473,10 +453,10 @@ def show_menu():
         
         background.blit(menu_background, (0, 0))
         
-        # Title (centered) replaced with image
-        zombs_scaled = pygame.transform.scale(zombs_image, (600, 200))
-        zombs_rect = zombs_scaled.get_rect(center=(750, 200))
-        background.blit(zombs_scaled, zombs_rect)
+        # Title (centered)
+        title = font_large.render("ZOMBIE SLAYER", True, (255, 0, 0))
+        title_rect = title.get_rect(center=(750, 200))
+        background.blit(title, title_rect)
         
         # Start Button
         pygame.draw.rect(background, (0, 200, 0), start_button)
@@ -505,11 +485,6 @@ quit_button = pygame.Rect(600, 500, 300, 100)
 # Game loop
 clock = pygame.time.Clock()
 running = True
-player_dead = False
-
-# Death screen button rectangles
-death_restart_button = pygame.Rect(450, 600, 200, 60)
-death_quit_button = pygame.Rect(850, 600, 200, 60)
 
 
 # Show menu first
@@ -525,22 +500,9 @@ while running:
         if event.type == pygame.VIDEORESIZE:
             window = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE)
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_g:
-                gate_is_open = not gate_is_open
-
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # left click
-                if player_dead:
-                    # Handle death screen button clicks
-                    mouse_pos = event.pos
-                    if death_restart_button.collidepoint(mouse_pos):
-                        player_dead = False
-                        reset_game()
-                    elif death_quit_button.collidepoint(mouse_pos):
-                        running = False
-                else:
-                    square.attack(zombies_group, all_sprites_list)
+                square.attack(zombies_group, all_sprites_list)
 
     keys = pygame.key.get_pressed()
     
@@ -568,7 +530,7 @@ while running:
         if square.stamina > 0:
             speed = 20
             square.stamina -= 1
-            print("stamina", round(square.stamina)) 
+            print("stamina", round(square.stamina))
     else:
         square.regen_stamina()
     
@@ -616,16 +578,12 @@ while running:
         square.rect.y = 100
     
     # Check if player is dead
-    if square.health <= 0 and not player_dead:
-        print("Player died! Showing death screen...")
-        player_dead = True
+    if square.health <= 0:
+        print("Player died! Restarting game...")
+        reset_game()
     
     # Update all sprites
     all_sprites_list.update()
-
-    # Open gate automatically when all zombies are gone
-    if len(zombies_group) == 0:
-        gate_is_open = True
     
     # Clear background based on room
     if room == 1:
@@ -635,13 +593,6 @@ while running:
     elif room == 3:
         background.fill(black)
     
-    # health and stamina bar  
-    health_width = int((square.health / 100) * 196)
-    pygame.draw.rect(background, RED, (30, 100, health_width, 35))
-    
-    stamina_width = int((square.stamina / 100) * 196)
-    pygame.draw.rect(background, blue, (290, 108, stamina_width, 20))
-
     # Draw obstacles
     for obstacle in obstacles:
         pygame.draw.rect(background, (0, 0, 0), obstacle)
@@ -654,32 +605,9 @@ while running:
     # Draw UI
     background.blit(healthui_image, (0, 85))
     background.blit(staminaui_image, (260,101))
-    fireui_x = 260 + staminaui_image.get_width() + 10
-    # Hide fire UI while a fireball exists
-    has_fireball = any(isinstance(s, Fireball) for s in all_sprites_list)
-    if not has_fireball:
-        background.blit(fireui_image, (fireui_x, 101))
     
     # Draw sprites
     all_sprites_list.draw(background)
-    
-    # Draw GGs and buttons if player is dead
-    if player_dead:
-        ggs_scaled = pygame.transform.scale(ggs_image, (600, 400))
-        ggs_rect = ggs_scaled.get_rect(center=(750, 350))
-        background.blit(ggs_scaled, ggs_rect)
-        
-        # Draw death screen buttons
-        font_button = pygame.font.Font(None, 40)
-        pygame.draw.rect(background, (0, 200, 0), death_restart_button)
-        restart_text = font_button.render("RESTART", True, (0, 0, 0))
-        restart_text_rect = restart_text.get_rect(center=death_restart_button.center)
-        background.blit(restart_text, restart_text_rect)
-        
-        pygame.draw.rect(background, (200, 0, 0), death_quit_button)
-        quit_text = font_button.render("QUIT", True, (255, 255, 255))
-        quit_text_rect = quit_text.get_rect(center=death_quit_button.center)
-        background.blit(quit_text, quit_text_rect)
     
     #able to scale window
     window.blit(background, (0, 0)) 
