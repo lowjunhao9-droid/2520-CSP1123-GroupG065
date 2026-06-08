@@ -442,7 +442,13 @@ while running:
         # Load new room's obstacles
         obstacles, inside_obstacles = get_room_obstacles(room)
         print(f"Entered Room {room}")  # Debug message
-    
+
+        if room == 2:
+            #clear all existing zombies in room 2 
+            for zombie in zombies_group:
+                zombie.kill()
+                spawn_zombies(4)
+               
     # Room transition (left edge)
     if square.rect.x < 1:
         room -= 1 
@@ -451,6 +457,10 @@ while running:
         # Load new room's obstacles
         obstacles, inside_obstacles = get_room_obstacles(room)
         print(f"Entered Room {room}")  # Debug message
+
+        if room == 2:
+            zombies_group.empty()
+            spawn_zombies(4)
     
     # Check if player is dead
     if square.health <= 0:
