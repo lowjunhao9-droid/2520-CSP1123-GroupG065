@@ -216,25 +216,26 @@ class Player(pygame.sprite.Sprite):
         self.regen_stamina()
         self.update_image() #make sure every frame of block have been updated
 
+#=================shield/block(in update_image)=================#
     def update_image(self):        
         base_img = self.images[self.facing].copy()
         
         #2. hold b will have a semi-transparent circular shield
         if self.is_blocking:
-            #create a canvas the same size
+            #create a canvas the same size with the player
             shield_surface = pygame.Surface(base_img.get_size(), pygame.SRCALPHA)
             
-            #Draw a semi-transparent sky blue circular cover inner ring (Color: Sky Blue, Opacity: 100)
+            #Draw a semi-transparent sky blue circular cover inner ring (Color: Sky Blue, Transparency: 100)
             pygame.draw.circle(shield_surface, (0, 191, 255, 100), (50, 50), 48)  
             # Draw the edge boundary of a bright purple circle (Color: bright purple, Line width: 4)
             pygame.draw.circle(shield_surface, (138, 43, 226, 225), (50, 50), 48, 4) 
             
-            # Blit the shield canvas onto the character layer
+            # Blit the shield canvas on the character layer
             base_img.blit(shield_surface, (0, 0))
             
         
         self.image = base_img
-            
+#====================================================#            
 
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(100,100), speed=2, player=None):
@@ -528,14 +529,15 @@ while running:
     old_hitbox_y = square.hitbox.y
 
     speed = 10
-    # tap B to block
+    #===tap B to block======#
     if keys[pygame.K_b]:
         square.is_blocking = True
         square.update_image()
     else:
         square.is_blocking = False
         square.update_image()
-    
+        #put square.update_image() is for python know that I am not holding b so it will not stuck in the situasion keep blocking forever
+    #============================#
     # Fireball key
     if keys[pygame.K_f]:
         square.cast_fireball(all_sprites_list)
