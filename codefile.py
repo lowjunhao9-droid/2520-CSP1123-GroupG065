@@ -3,8 +3,6 @@ import random
 
 pygame.init()
 
-#=======Display window=========#
-#default screen size
 game_width = 1500
 game_height = 1000
 
@@ -14,73 +12,66 @@ pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
 
 #background
 background = pygame.Surface((game_width,game_height))
-#======================================#
 
-
-# Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 menu_background = pygame.image.load("Menu.png").convert()
-
-
 
 # Colors
 GREEN = (0,100,0)
 SURFACE_COLOR = (167, 255, 100)
 RED = (200, 0, 0)
-black = (0,0,0)
+black = (0,0,0,)
 blue = (0,0,150)
 purple = (100,0,100)
 room = 1
 
-# FUNCTION TO GET ROOM-SPECIFIC OBSTACLES
-def get_room_obstacles(room_number):
-    """Return obstacles based on current room number"""
-    
-    # Walls that exist in every room (boundary walls)
-    walls = [
-        pygame.Rect(0, 1, 30, 1000),      # left wall
-        pygame.Rect(1, 60, 1500, 30),     # top wall 
-        pygame.Rect(10, 900, 1500, 30),   # bottom wall 
-        pygame.Rect(1480, 600, 30, 700),  # right bottom wall
-        pygame.Rect(1480, 80, 30, 350),   # right top wall     
-    ]
-    
-    # Different inner obstacles for each room
-    if room_number == 1:
-        # Room 1: Original obstacles (full of obstacles)
-        inner = [
-            pygame.Rect(380, 200, 50, 300),
-            pygame.Rect(500, 600, 300, 50),
-            pygame.Rect(715, 650, 85, 70),
-            pygame.Rect(1000, 410, 95, 470),
-            pygame.Rect(820, 830, 200, 50),
-            pygame.Rect(795, 400, 300, 80),
-            pygame.Rect(410, 200, 530, 50),
-            pygame.Rect(1100, 200, 150, 40),
-            pygame.Rect(1250, 200, 40, 150),
-            pygame.Rect(1250, 700, 90, 100),
-        ]
-    elif room_number == 2:
-        # Room 2: NO OBSTACLES (empty room!)
-        inner = []
-    elif room_number == 3:
-        # Room 3: Different obstacle pattern
-        inner = [
-            pygame.Rect(500, 500, 500, 30),   # horizontal platform
-            pygame.Rect(800, 300, 30, 400),   # vertical pillar
-            pygame.Rect(200, 700, 100, 100),  # small box
-            pygame.Rect(1200, 200, 100, 100), # top right box
-            pygame.Rect(1100, 750, 150, 50),  # bottom platform
-        ]
-    else:
-        # Any additional rooms default to empty
-        inner = []
-    
-    return walls, inner
+#still obstacles 
+obstacles = [
+     # obstacle (X position, Y position, obstacle WIDTH, obstacle HEIGHT)
+     pygame.Rect(0, 1, 30, 1000),# left wall
+     pygame.Rect(1, 60, 1500, 30),# top wall 
+     pygame.Rect(10, 900, 1500, 30 ), #bottom wall 
+     pygame.Rect(1480, 600, 30, 700), #right bottom wall
+     pygame.Rect(1480, 80, 30, 350), # right top wall     
+]
 
-# Initialize obstacles from room 1
-obstacles, inside_obstacles = get_room_obstacles(room)
+#obstacle inside the wall/ small obstacles in the map for ROOM 1
+inside_obstacles_room1 =[
+    #pygame.rect(x position, y position, width, height)
+     pygame.Rect(380, 200, 50, 300),
+     pygame.Rect(500, 600, 300, 50),
+     pygame.Rect(715, 650, 85, 70),
+     pygame.Rect(1000, 410, 95, 470),
+     pygame.Rect(820, 830, 200, 50),
+     pygame.Rect(795, 400, 300, 80),
+     pygame.Rect(410, 200, 530, 50),
+     pygame.Rect(1100, 200, 150, 40),
+     pygame.Rect(1250, 200, 40, 150),
+     pygame.Rect(1250, 700, 110, 130),
+]
+
+#obstacle inside the wall/ small obstacles in the map for ROOM 2 (black obstacles)
+inside_obstacles_room2 =[
+    # Different layout for room 2 - all in black
+     pygame.Rect(200, 150, 100, 100),   # Square block
+     pygame.Rect(600, 300, 150, 50),    # Horizontal bar
+     pygame.Rect(900, 500, 50, 200),    # Vertical bar
+     pygame.Rect(400, 700, 200, 50),    # Horizontal bar bottom
+     pygame.Rect(1100, 200, 80, 80),    # Square block top right
+     pygame.Rect(1200, 600, 100, 150),  # Rectangle bottom right
+     pygame.Rect(300, 400, 60, 150),    # Vertical bar left
+     pygame.Rect(800, 150, 200, 40),    # Top horizontal bar
+     pygame.Rect(100, 500, 80, 80),     # Square left side
+     pygame.Rect(1300, 400, 80, 100),   # Rectangle right side
+]
+
+# Current obstacles based on room
+inside_obstacles = inside_obstacles_room1.copy()
+
+# Store original obstacles for reset
+original_inside_obstacles_room1 = inside_obstacles_room1.copy()
+original_inside_obstacles_room2 = inside_obstacles_room2.copy()
 
 # COLLISION HELPER FUNCTION
 def check_collision_with_obstacles(sprite):
@@ -98,13 +89,23 @@ gate_is_open = False
 # Gate position (right side)
 gate_rect = pygame.Rect(1420, 360, 60, 300)
 
+def are_zombies_in_room():
+    """Check if there are any zombies alive in the current room"""
+    return len(zombies_group) > 0
+
 def draw_gate(surface, rect, is_open):
     pygame.draw.rect(surface, (90, 90, 90), rect)
 
     if not is_open:
+        # Draw locked gate pattern
         for y in range(rect.top + 8, rect.bottom - 8, 20):
             pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
+        # Add a red lock indicator when zombies are present
+        if are_zombies_in_room():
+            pygame.draw.circle(surface, (255, 0, 0), (rect.centerx, rect.centery - 30), 15)
+            pygame.draw.rect(surface, (255, 0, 0), (rect.centerx - 5, rect.centery - 15, 10, 20))
     else:
+        # Draw open gate pattern
         for y in range(rect.top + 5, rect.top + 20, 12):
             pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
         for y in range(rect.bottom - 20, rect.bottom - 5, 12):
@@ -113,24 +114,22 @@ def draw_gate(surface, rect, is_open):
 
 # definition of reset game
 def reset_game():
-    global square, all_sprites_list, zombies_group, room, obstacles, inside_obstacles
+    global square, room, inside_obstacles
     room = 1
+    # Reset inside obstacles to room 1 obstacles
+    inside_obstacles.clear()
+    inside_obstacles.extend(original_inside_obstacles_room1)
     
-    # Reset obstacles for room 1
-    obstacles, inside_obstacles = get_room_obstacles(room)
-
-    # Reset sprite groups
-    all_sprites_list = pygame.sprite.Group()
-    zombies_group = pygame.sprite.Group()
-
-    # New player
-    square = Player()
+    all_sprites_list.empty() # clear all the sprites
+    zombies_group.empty()    # clear previous zombies
+    
+    square = Player()        # again to be a player
     square.rect.x = 100
     square.rect.y = 100
     #manual centering hitbox of player
     square.hitbox.center = square.rect.center 
     all_sprites_list.add(square)
-    spawn_zombies(3,2)#spawn 3 normal zombie and 2 fast zombie
+    spawn_zombies(3) #spawn 3 zombies only
 
  
 
@@ -155,7 +154,7 @@ class Player(pygame.sprite.Sprite):
 
         #Stats
         self.rect = self.image.get_rect() 
-        self.hitbox = self.rect.inflate(-20, -20)  # 100x100 -> 80x80 hitbox
+        self.hitbox = self.rect.inflate(-40, -40)  # 100x100 -> 70x70 hitbox
         
         self.health = 100
         self.stamina = 100
@@ -170,6 +169,7 @@ class Player(pygame.sprite.Sprite):
         if current_time - self.last_regen_time >= self.regen_delay:
             if self.stamina < 100:
                 self.stamina += 10
+                print("Stamina", self.stamina)
             self.last_regen_time = current_time
                 
 
@@ -332,11 +332,6 @@ class Zombie(pygame.sprite.Sprite):
                         print("Player hit! Full damage taken. Health:", self.player.health)
                     self.last_attack_time = current_time
 
-class FasterZombie(Zombie):
-    def __init__(self,image_file,scale=(90,90),speed=5,player=None):
-        super().__init__(image_file,scale,speed,player)
-        self.health = 60
-
 class Attack(pygame.sprite.Sprite):
     def __init__(self, player, duration=200):
         super().__init__()
@@ -427,7 +422,7 @@ square.rect.y = 100
 all_sprites_list.add(square)
 
 # Function to spawn multiple zombies
-def spawn_zombies(num_normal=3,num_faster=2):
+def spawn_zombies(num_normal=3):
     for i in range(num_normal):
         zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
         # Spawn in valid positions (not inside obstacles)
@@ -443,24 +438,9 @@ def spawn_zombies(num_normal=3,num_faster=2):
         
         zombies_group.add(zombie)
         all_sprites_list.add(zombie)
-    
-    for i in range(num_faster):
-        fast_zombie = FasterZombie("FastZombie.png", scale=(90,90), speed=5, player=square)
-        valid_position = False
-        attempts = 0
-        while not valid_position and attempts < 50:
-            fast_zombie.rect.x = random.randint(100,1400)
-            fast_zombie.rect.y = random.randint(100,900)
-            fast_zombie.hitbox.center = fast_zombie.rect.center
-            if not check_collision_with_obstacles(fast_zombie):
-                valid_position = True
-            attempts += 1
-        
-        zombies_group.add(fast_zombie)
-        all_sprites_list.add(fast_zombie)
 
-# Spawn initial zombies
-spawn_zombies(3,2)
+# Spawn initial zombies (only 3 in first room)
+spawn_zombies(3)
 
 # Main Menu
 def show_menu():
@@ -529,6 +509,10 @@ quit_button = pygame.Rect(600, 500, 300, 100)
 clock = pygame.time.Clock()
 running = True
 
+# Font for on-screen messages
+message_font = pygame.font.Font(None, 36)
+message_text = ""
+message_timer = 0
 
 # Show menu first
 if not show_menu():
@@ -573,6 +557,7 @@ while running:
         if square.stamina > 0:
             speed = 20
             square.stamina -= 1
+            print("stamina", round(square.stamina))
     else:
         square.regen_stamina()
     
@@ -609,38 +594,87 @@ while running:
         square.hitbox.x = old_hitbox_x
         square.hitbox.y = old_hitbox_y
     
-    # Room transition (right edge)
+    # Update gate state based on zombies in room
+    gate_is_open = not are_zombies_in_room()
+    
+    # Room transition - only allow if no zombies in current room
     if square.rect.x >= 1500 - square.rect.width:
-        room += 1
-        square.rect.x = 100
-        square.rect.y = 100
-        # Load new room's obstacles
-        obstacles, inside_obstacles = get_room_obstacles(room)
-        print(f"Entered Room {room}")  # Debug message
-
-        if room == 2:
-            #clear all existing zombies in room 2 
-            for zombie in zombies_group:
-                zombie.kill()
-                spawn_zombies(4)
-               
-    # Room transition (left edge)
-    if square.rect.x < 1:
-        room -= 1 
-        square.rect.x = 1300
-        square.rect.y = 100
-        # Load new room's obstacles
-        obstacles, inside_obstacles = get_room_obstacles(room)
-        print(f"Entered Room {room}")  # Debug message
-
-        if room == 2:
+        if not are_zombies_in_room():
+            room += 1
+            square.rect.x = 100
+            square.rect.y = 100
+            
+            # Change obstacles based on room
+            inside_obstacles.clear()
+            if room == 2:
+                inside_obstacles.extend(original_inside_obstacles_room2)
+                message_text = "Entering Room 2 - New obstacles!"
+                spawn_zombies(5)
+            elif room == 1:
+                inside_obstacles.extend(original_inside_obstacles_room1)
+                message_text = "Entering Room 1"
+                spawn_zombies(3)
+            else:
+                # For rooms beyond 2, use room 2 obstacles or create empty
+                inside_obstacles.extend(original_inside_obstacles_room2)
+                message_text = f"Entering Room {room}"
+            
+            # Clear existing zombies and spawn new ones for next room
             zombies_group.empty()
-            spawn_zombies(4)
+            # Clear attack sprites to avoid visual clutter
+            for sprite in all_sprites_list:
+                if isinstance(sprite, Attack) or isinstance(sprite, Fireball):
+                    sprite.kill()
+            spawn_zombies(3)  # Spawn 3 new zombies in the next room
+            message_timer = pygame.time.get_ticks()
+        else:
+            # Show a message that zombies must be cleared first
+            message_text = f"Defeat {len(zombies_group)} zombies before proceeding!"
+            message_timer = pygame.time.get_ticks()
+            print(f"Defeat {len(zombies_group)} zombie(s) before proceeding!")
+            # Push player back
+            square.rect.x = old_x
+            square.hitbox.x = old_hitbox_x
+            
+    if square.rect.x < 1:
+        if not are_zombies_in_room():
+            room -= 1 
+            square.rect.x = 1300
+            square.rect.y = 100
+            
+            # Change obstacles based on room
+            inside_obstacles.clear()
+            if room == 1:
+                inside_obstacles.extend(original_inside_obstacles_room1)
+                message_text = "Returned to Room 1"
+            elif room == 2:
+                inside_obstacles.extend(original_inside_obstacles_room2)
+                message_text = "Entering Room 2"
+            else:
+                inside_obstacles.extend(original_inside_obstacles_room2)
+                message_text = f"Entering Room {room}"
+            
+            # Clear existing zombies and spawn new ones for previous room
+            zombies_group.empty()
+            for sprite in all_sprites_list:
+                if isinstance(sprite, Attack) or isinstance(sprite, Fireball):
+                    sprite.kill()
+            spawn_zombies(3)
+            message_timer = pygame.time.get_ticks()
+        else:
+            message_text = f"Defeat {len(zombies_group)} zombies before proceeding!"
+            message_timer = pygame.time.get_ticks()
+            print(f"Defeat {len(zombies_group)} zombie(s) before proceeding!")
+            # Push player back
+            square.rect.x = old_x
+            square.hitbox.x = old_hitbox_x
     
     # Check if player is dead
     if square.health <= 0:
         print("Player died! Restarting game...")
         reset_game()
+        message_text = "Game Reset! Defeat all zombies to proceed!"
+        message_timer = pygame.time.get_ticks()
     
     # Update all sprites
     all_sprites_list.update()
@@ -651,17 +685,20 @@ while running:
     elif room == 2:
         background.fill(blue)    
     elif room == 3:
-        background.fill(purple)
+        background.fill(black)
     else:
-        background.fill(black)  # Default for other rooms
+        background.fill((50, 50, 100))  # Dark blue for other rooms
     
-    # Draw obstacles (walls)
+    # Draw obstacles
     for obstacle in obstacles:
         pygame.draw.rect(background, (0, 0, 0), obstacle)
     
-    # Draw inside obstacles
+    # Draw inside obstacles - BLACK for room 2, BLUE for room 1
     for inside_obstacle in inside_obstacles:
-        pygame.draw.rect(background, (0, 0, 150), inside_obstacle)
+        if room == 2:
+            pygame.draw.rect(background, black, inside_obstacle)  # Black obstacles for room 2
+        else:
+            pygame.draw.rect(background, (0, 0, 150), inside_obstacle)  # Blue for other rooms
     
     draw_gate(background, gate_rect, gate_is_open)
 
@@ -669,13 +706,19 @@ while running:
     background.blit(healthui_image, (0, 85))
     background.blit(staminaui_image, (260,101))
     
+    # Draw on-screen message if active
+    if message_timer > 0 and pygame.time.get_ticks() - message_timer < 2000:  # Show for 2 seconds
+        message_surface = message_font.render(message_text, True, (255, 255, 0))
+        message_rect = message_surface.get_rect(center=(game_width // 2, 50))
+        background.blit(message_surface, message_rect)
+    else:
+        message_timer = 0
+    
     # Draw sprites
     all_sprites_list.draw(background)
     
-    # DEBUG: Draw hitboxes (uncomment if needed)
-    # pygame.draw.rect(background, (255, 0, 0), square.hitbox, 2)  # Player hitbox (red)
-    # for zombie in zombies_group:
-    #     pygame.draw.rect(background, (255, 255, 0), zombie.rect, 2)  # Zombie hitbox (yellow)
+    #able to scale window
+    window.blit(background, (0, 0)) 
     
     pygame.display.flip()
     clock.tick(60)
