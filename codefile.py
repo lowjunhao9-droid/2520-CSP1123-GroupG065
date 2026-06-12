@@ -219,7 +219,7 @@ class Player(pygame.sprite.Sprite):
                 zombie.health -= 10
                 print(f"Zombie hit! Health: {zombie.health}")
                 # Visual feedback
-                zombie.hit_effect = 5
+                zombie.hit_effect = 5 #flicker 5 frames
     
     def cast_fireball(self, all_sprites_list):
         current_time = pygame.time.get_ticks()
