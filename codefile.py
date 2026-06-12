@@ -801,11 +801,7 @@ while running:
     elif room == 2:
         background.fill(blue)    
     elif room == 3:
-        background.fill(RED)  # Room 3 has RED background
-    elif room >= 4:
-        background.fill((255, 100, 100))  # Lighter red for rooms beyond 3
-    else:
-        background.fill((50, 50, 100))
+        background.fill(black)
     
     # health and stamina bar  
     health_width = int((square.health / 100) * 196)
