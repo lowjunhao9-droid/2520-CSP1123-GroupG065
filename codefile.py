@@ -27,7 +27,7 @@ ggs_image = pygame.image.load("GGs.png").convert_alpha()
 
 
 
-menu_background = pygame.image.load("Menu.png").convert()
+menu_background = pygame.image.load("Menu1600.png").convert()
 
 # Colors
 GREEN = (0,100,0)
