@@ -609,9 +609,11 @@ def spawn_zombies(num_normal=3, num_fast=0, num_armored=0):
     
     for i in range(num_armored):
         armored_zombie = ArmoredZombie("Armored_Zombie.png", scale=(110,110), speed=1.5, player= square )
-        
+#Aiden add your code inside here to make the zombie not stuck in wall       
         zombies_group.add(armored_zombie)
         all_sprites_list.add(armored_zombie)
+
+
 # Spawn initial zombies (3 normal, 0 fast in first room, 1 armored)
 spawn_zombies(3, 0, 1)
 
