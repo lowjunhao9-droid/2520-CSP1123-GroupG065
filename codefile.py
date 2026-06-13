@@ -146,7 +146,7 @@ def reset_game():
     all_sprites_list.add(square)
     spawn_zombies(3, 0) #spawn 3 zombies only
 
-# Sprite Class
+#============================== Sprite Class for player=============================================#
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -251,6 +251,32 @@ class Player(pygame.sprite.Sprite):
         else:
             print("Fireball on cooldown!")
     
+    def cast_shockwave(self, all_sprites_list):
+        current_time = pygame.time.get_ticks()
+        
+        # hasattr()= has attribute hasattr(object,name)
+        if not hasattr(self,'shockwave_cooldown'):
+            self.shockwave_cooldown = 1000 #here is cooldown (1000=1s)
+            self.last_shockwave_time = 0
+
+        #check cooldown and stamina
+        if current_time - self.last_shockwave_time >= self.shockwave_cooldown:
+            if self.stamina >= 30:
+                self.stamina -= 30
+                self.last_shockwave_time = current_time
+
+                #create the wave at the center of player
+                wave = Shockwave(self.rect.centerx, self.rect.centery, max_radius=250, speed=6, damage=50 )#this is the place that truely can change damage and every thing
+                all_sprites_list.add(wave)
+                print("Shockwave cast!")
+            else:
+                print("Not enough stamina for Shockwave!")
+        else:
+            print("Shockwave on cooldown!")
+
+
+
+
     def die(self):
         print("Player dead")
         self.kill()
@@ -265,6 +291,7 @@ class Player(pygame.sprite.Sprite):
         if self.invincible and pygame.time.get_ticks() > self.invincible_time:
             self.invincible = False
 
+#=================shield/block(in update_image)=================#
     def update_image(self):        
         base_img = self.images[self.facing].copy()
         
@@ -274,13 +301,23 @@ class Player(pygame.sprite.Sprite):
         
         # hold b will have a semi-transparent circular shield
         if self.is_blocking:
+            #create a canvas the same size with the player
+            
+            
+            #Draw a semi-transparent sky blue circular cover inner ring (Color: Sky Blue, Transparency: 100)
             shield_surface = pygame.Surface(base_img.get_size(), pygame.SRCALPHA)
             pygame.draw.circle(shield_surface, (0, 191, 255, 100), (50, 50), 48)  
             pygame.draw.circle(shield_surface, (138, 43, 226, 225), (50, 50), 48, 4) 
+            
+            # Blit the shield canvas on the character layer
             base_img.blit(shield_surface, (0, 0))
         
         self.image = base_img
+#====================================================#            
+#=============================================================================#
 
+
+#==========================Class for zombie=======================================#
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, image_file, scale=(100,100), speed=2, player=None):
         super().__init__()
@@ -360,6 +397,14 @@ class FasterZombie(Zombie):
         super().__init__(image_file, scale, speed, player)
         self.health = 60
 
+class ArmoredZombie(Zombie):
+    def __init__(self, image_file, scale=(110,110), speed=1, player=None):
+        super().__init__(image_file, scale, speed=1, player=None)
+        self.health = 200 
+        
+##===================================================================================##  
+
+
 class Attack(pygame.sprite.Sprite):
     def __init__(self, player, duration=200):
         super().__init__()
@@ -392,7 +437,7 @@ class Attack(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.spawn_time >= self.duration:
             self.kill()
 
-#special skill for player class
+#=======================special skill for player class==============================================
 class Fireball(pygame.sprite.Sprite):
     def __init__(self, x, y, direction, speed=15, damage=30):
         super().__init__()
@@ -440,6 +485,57 @@ class Fireball(pygame.sprite.Sprite):
             self.rect.bottom < 0 or self.rect.top > 1000):
             self.kill()
 
+class Shockwave(pygame.sprite.Sprite):
+    def __init__(self,x,y,max_radius=200,speed=5,damage=20):
+        super().__init__()
+        self.max_radius = max_radius
+        self.speed = speed 
+        self.damage = damage
+        self.current_radius = 10
+
+        #create a suitable canva
+        self.size = max_radius * 2 + 20
+        self.image = pygame.Surface((self.size,self.size), pygame.SRCALPHA)
+        self.rect = self.image.get_rect(center=(x,y))
+        self.hitbox = self.rect
+
+        self.hit_zombies = set()
+
+    def update(self):
+        #slowly increate the radius
+        self.current_radius += self.speed
+
+        #if the radius bigger than the maximum radius skill disappear
+        if self.current_radius >= self.max_radius:
+            self.kill()
+            return
+        
+        #clear it
+        self.image.fill((0,0,0,0))
+
+        #calculate the transparency: if the wave more further spread out,the lighter the color gets.
+        alpha = max(0,int(255 *(1 - self.current_radius/self.max_radius)))
+
+        #draw the effect for wave : lightblue colour ring (R,G,B, Alpha)
+        center_pos = (self.size//2 , self.size//2)
+        pygame.draw.circle(self.image, (0,191,255,alpha), center_pos, self.current_radius, 6) #6 is the thickness
+
+        #Damage check
+        for zombie in zombies_group:
+            if zombie not in self.hit_zombies:
+                #calculate  distance between the center of zombie and wave
+                dx = zombie.rect.centerx - self.rect.centerx
+                dy = zombie.rect.centery - self.rect.centery
+                distance = (dx**2 + dy**2) ** 0.5
+            
+               #take damge when the zombie is right on the edge of a wave
+                if distance <= self.current_radius + 20 and distance >= self.current_radius - 20:
+                    zombie.health -= self.damage
+                    print(f"Zombies hit by Shockwave! Health: {zombie.health}")
+                    zombie.hit_effect = 5
+                    self.hit_zombies.add(zombie) #mark as hit
+    
+#==============================================================================#
 # Create sprite groups
 all_sprites_list = pygame.sprite.Group()
 zombies_group = pygame.sprite.Group()
@@ -451,7 +547,7 @@ square.rect.y = 100
 all_sprites_list.add(square)
 
 # Function to spawn multiple zombies with better position checking
-def spawn_zombies(num_normal=3, num_fast=0):
+def spawn_zombies(num_normal=3, num_fast=0, num_armored=0):
     # Spawn normal zombies
     for i in range(num_normal):
         zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
@@ -484,7 +580,7 @@ def spawn_zombies(num_normal=3, num_fast=0):
     
     # Spawn fast zombies
     for i in range(num_fast):
-        fast_zombie = FasterZombie("Zombie1.png", scale=(90,90), speed=5, player=square)
+        fast_zombie = FasterZombie("FastZombie.png", scale=(90,90), speed=5, player=square)
         valid_position = False
         attempts = 0
         while not valid_position and attempts < 100:
@@ -510,9 +606,14 @@ def spawn_zombies(num_normal=3, num_fast=0):
         
         zombies_group.add(fast_zombie)
         all_sprites_list.add(fast_zombie)
-
-# Spawn initial zombies (3 normal, 0 fast in first room)
-spawn_zombies(3, 0)
+    
+    for i in range(num_armored):
+        armored_zombie = ArmoredZombie("Armored_Zombie.png", scale=(110,110), speed=1.5, player= square )
+        
+        zombies_group.add(armored_zombie)
+        all_sprites_list.add(armored_zombie)
+# Spawn initial zombies (3 normal, 0 fast in first room, 1 armored)
+spawn_zombies(3, 0, 1)
 
 # Main Menu
 def show_menu():
@@ -582,6 +683,8 @@ message_font = pygame.font.Font(None, 36)
 message_text = ""
 message_timer = 0
 
+
+#=============== while game running =================#
 # Show menu first
 if not show_menu():
     pygame.quit()
@@ -621,18 +724,27 @@ while running:
     old_hitbox_y = square.hitbox.y
 
     speed = 10
-    # tap B to block
+    #===tap B to block======#
     if keys[pygame.K_b]:
         square.is_blocking = True
         square.update_image()
     else:
         square.is_blocking = False
         square.update_image()
-    
+        #put square.update_image() is for python know that I am not holding b so it will not stuck in the situasion keep blocking forever
+    #============================#
     # Fireball key
     if keys[pygame.K_f]:
         square.cast_fireball(all_sprites_list)
     
+    # Skill shockwave key:press V
+    if keys[pygame.K_v]:
+        square.cast_shockwave(all_sprites_list)
+
+
+
+
+
     # Sprint handling
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
         if square.stamina > 0:
@@ -782,11 +894,7 @@ while running:
     if square.health <= 0 and not player_dead:
         print("Player died! Showing death screen...")
         player_dead = True
-    if square.health <= 0:
-        print("Player died! Restarting game...")
-        reset_game()
-        message_text = "Game Reset! Defeat all zombies to proceed!"
-        message_timer = pygame.time.get_ticks()
+    
     
     # Update all sprites
     all_sprites_list.update()
@@ -861,14 +969,16 @@ while running:
         background.blit(ggs_scaled, ggs_rect)
         
         # Draw death screen buttons
-        font_button = pygame.font.Font(None, 40)
+        ##!!!! Sorry haozheng  for: I need to delete this  and change font_button to message_font  
+        # this is what I delete #font_button = pygame.font.Font(None, 40)
+        # if after you fix it already and you still want to use font_button you can do it ,this just a temporary change
         pygame.draw.rect(background, (0, 200, 0), death_restart_button)
-        restart_text = font_button.render("RESTART", True, (0, 0, 0))
+        restart_text = message_font.render("RESTART", True, (0, 0, 0))
         restart_text_rect = restart_text.get_rect(center=death_restart_button.center)
         background.blit(restart_text, restart_text_rect)
         
         pygame.draw.rect(background, (200, 0, 0), death_quit_button)
-        quit_text = font_button.render("QUIT", True, (255, 255, 255))
+        quit_text = message_font.render("QUIT", True, (255, 255, 255))
         quit_text_rect = quit_text.get_rect(center=death_quit_button.center)
         background.blit(quit_text, quit_text_rect)
     
@@ -876,5 +986,5 @@ while running:
     window.blit(background, (0, 0)) 
     pygame.display.flip()
     clock.tick(60)
-
+#===============================================#
 pygame.quit()
