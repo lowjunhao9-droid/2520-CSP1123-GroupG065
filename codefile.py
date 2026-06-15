@@ -3,7 +3,6 @@ import random
 
 pygame.init()
 
-#=======Display window=========#
 #default screen size
 game_width = 1500
 game_height = 1000
@@ -14,7 +13,6 @@ pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
 
 #background
 background = pygame.Surface((game_width,game_height))
-#======================================#
 
 # Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
@@ -23,9 +21,6 @@ fireui_image = pygame.image.load("fireui.png").convert_alpha()
 menu_background = pygame.image.load("Menu1600.png").convert()
 zombs_image = pygame.image.load("zombs.png").convert_alpha()
 ggs_image = pygame.image.load("GGs.png").convert_alpha()
-
-
-
 
 menu_background = pygame.image.load("Menu1600.png").convert()
 
@@ -36,6 +31,7 @@ RED = (200, 0, 0)
 black = (0,0,0)
 blue = (0,0,150)
 purple = (100,0,100)
+dark_red = (139, 0, 0)  # Color for room 4
 room = 1
 
 #still obstacles 
@@ -78,8 +74,23 @@ inside_obstacles_room2 =[
      pygame.Rect(1300, 400, 80, 100),   # Rectangle right side
 ]
 
-# Room 3 has NO obstacles (empty list)
-inside_obstacles_room3 = []  # Empty list - no obstacles in room 3
+# Room 3 obstacles - one square and two rectangles (black colour)
+inside_obstacles_room3 = [
+    pygame.Rect(600, 400, 80, 80),     # Square block
+    pygame.Rect(900, 300, 120, 50),    # Horizontal rectangle
+    pygame.Rect(400, 600, 50, 150),    # Vertical rectangle
+]
+
+# Room 4 obstacles - more challenging layout
+inside_obstacles_room4 = [
+    pygame.Rect(300, 200, 100, 100),   # Top left square
+    pygame.Rect(700, 150, 150, 50),    # Top horizontal bar
+    pygame.Rect(1100, 250, 80, 150),   # Right vertical bar
+    pygame.Rect(500, 600, 120, 50),    # Bottom horizontal bar
+    pygame.Rect(900, 550, 80, 80),     # Center square
+    pygame.Rect(200, 700, 80, 150),    # Left vertical bar
+    pygame.Rect(1200, 650, 100, 100),  # Bottom right square
+]
 
 # Current obstacles based on room
 inside_obstacles = inside_obstacles_room1.copy()
@@ -88,6 +99,7 @@ inside_obstacles = inside_obstacles_room1.copy()
 original_inside_obstacles_room1 = inside_obstacles_room1.copy()
 original_inside_obstacles_room2 = inside_obstacles_room2.copy()
 original_inside_obstacles_room3 = inside_obstacles_room3.copy()
+original_inside_obstacles_room4 = inside_obstacles_room4.copy()
 
 # COLLISION HELPER FUNCTION
 def check_collision_with_obstacles(sprite):
@@ -129,8 +141,12 @@ def draw_gate(surface, rect, is_open):
 
 # definition of reset game
 def reset_game():
-    global square, room, inside_obstacles
+    global square, room, inside_obstacles, health_orb, health_orb_spawned_room2, health_orb_spawned_room3, health_orb_spawned_room4
     room = 1
+    health_orb = None  # Reset health orb
+    health_orb_spawned_room2 = False
+    health_orb_spawned_room3 = False
+    health_orb_spawned_room4 = False
     # Reset inside obstacles to room 1 obstacles
     inside_obstacles.clear()
     inside_obstacles.extend(original_inside_obstacles_room1)
@@ -145,6 +161,40 @@ def reset_game():
     square.hitbox.center = square.rect.center 
     all_sprites_list.add(square)
     spawn_zombies(3, 0) #spawn 3 zombies only
+
+# Health Orb Class
+class HealthOrb(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
+        # Draw a red/pink circle with a glow effect
+        pygame.draw.circle(self.image, (255, 100, 100, 255), (20, 20), 20)
+        pygame.draw.circle(self.image, (255, 50, 50, 255), (20, 20), 15)
+        pygame.draw.circle(self.image, (255, 0, 0, 255), (20, 20), 10)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.hitbox = self.rect.inflate(-10, -10)
+        self.animation_frame = 0
+        
+    def update(self):
+        # Pulsing animation effect
+        self.animation_frame += 0.2
+        pulse = int(abs(5 * pygame.math.Vector2(0, 1).rotate(self.animation_frame * 30).y))
+        
+        # Redraw with pulse effect
+        self.image.fill((0, 0, 0, 0))
+        pygame.draw.circle(self.image, (255, 100 + pulse, 100 + pulse, 255), (20, 20), 20)
+        pygame.draw.circle(self.image, (255, 50 + pulse, 50 + pulse, 255), (20, 20), 15)
+        pygame.draw.circle(self.image, (255, 0, 0, 255), (20, 20), 10)
+        
+        # Check collision with player
+        if square.alive() and self.rect.colliderect(square.rect):
+            # Heal the player
+            if square.health < 100:
+                square.health = min(100, square.health + 50)
+                print(f"Health orb collected! Health: {square.health}")
+            self.kill()
+            return True
+        return False
 
 #============================== Sprite Class for player=============================================#
 class Player(pygame.sprite.Sprite):
@@ -166,7 +216,7 @@ class Player(pygame.sprite.Sprite):
 
         #Stats
         self.rect = self.image.get_rect() 
-        self.hitbox = self.rect.inflate(-15, -15)  # 85x85 hitbox - balanced
+        self.hitbox = self.rect.inflate(-25, -25)  # SMALLER HITBOX - 50x50
         
         self.health = 100
         self.stamina = 100
@@ -273,9 +323,6 @@ class Player(pygame.sprite.Sprite):
                 print("Not enough stamina for Shockwave!")
         else:
             print("Shockwave on cooldown!")
-
-
-
 
     def die(self):
         print("Player dead")
@@ -539,6 +586,10 @@ class Shockwave(pygame.sprite.Sprite):
 # Create sprite groups
 all_sprites_list = pygame.sprite.Group()
 zombies_group = pygame.sprite.Group()
+health_orb = None  # Track health orb
+health_orb_spawned_room2 = False  # Track if health orb spawned in room 2
+health_orb_spawned_room3 = False  # Track if health orb spawned in room 3
+health_orb_spawned_room4 = False  # Track if health orb spawned in room 4
 
 # Create sprite (Player)
 square = Player()
@@ -609,7 +660,6 @@ def spawn_zombies(num_normal=3, num_fast=0, num_armored=0):
     
     for i in range(num_armored):
         armored_zombie = ArmoredZombie("Armored_Zombie.png", scale=(110,110), speed=1.5, player= square )
-#Aiden add your code inside here to make the zombie not stuck in wall       
         zombies_group.add(armored_zombie)
         all_sprites_list.add(armored_zombie)
 
@@ -743,10 +793,6 @@ while running:
     if keys[pygame.K_v]:
         square.cast_shockwave(all_sprites_list)
 
-
-
-
-
     # Sprint handling
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
         if square.stamina > 0:
@@ -792,12 +838,115 @@ while running:
     # Update gate state based on zombies in room
     gate_is_open = not are_zombies_in_room()
     
+    # Spawn health orb in Room 2 when all zombies are killed
+    if room == 2 and len(zombies_group) == 0 and health_orb is None and not health_orb_spawned_room2:
+        # Spawn health orb at a random position not inside obstacles
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 50:
+            orb_x = random.randint(200, 1300)
+            orb_y = random.randint(200, 800)
+            orb_rect = pygame.Rect(orb_x - 20, orb_y - 20, 40, 40)
+            
+            # Check if orb position collides with obstacles
+            collision_orb = False
+            for obstacle in obstacles:
+                if orb_rect.colliderect(obstacle):
+                    collision_orb = True
+                    break
+            if not collision_orb:
+                for inside_obstacle in inside_obstacles:
+                    if orb_rect.colliderect(inside_obstacle):
+                        collision_orb = True
+                        break
+            
+            if not collision_orb:
+                valid_position = True
+            attempts += 1
+        
+        health_orb = HealthOrb(orb_x, orb_y)
+        all_sprites_list.add(health_orb)
+        health_orb_spawned_room2 = True
+        message_text = "A Health Orb has appeared in Room 2!"
+        message_timer = pygame.time.get_ticks()
+    
+    # Spawn health orb in Room 3 when all zombies are killed
+    if room == 3 and len(zombies_group) == 0 and health_orb is None and not health_orb_spawned_room3:
+        # Spawn health orb at a random position not inside obstacles
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 50:
+            orb_x = random.randint(200, 1300)
+            orb_y = random.randint(200, 800)
+            orb_rect = pygame.Rect(orb_x - 20, orb_y - 20, 40, 40)
+            
+            # Check if orb position collides with obstacles
+            collision_orb = False
+            for obstacle in obstacles:
+                if orb_rect.colliderect(obstacle):
+                    collision_orb = True
+                    break
+            if not collision_orb:
+                for inside_obstacle in inside_obstacles:
+                    if orb_rect.colliderect(inside_obstacle):
+                        collision_orb = True
+                        break
+            
+            if not collision_orb:
+                valid_position = True
+            attempts += 1
+        
+        health_orb = HealthOrb(orb_x, orb_y)
+        all_sprites_list.add(health_orb)
+        health_orb_spawned_room3 = True
+        message_text = "A Health Orb has appeared in Room 3!"
+        message_timer = pygame.time.get_ticks()
+    
+    # Spawn health orb in Room 4 when all zombies are killed
+    if room == 4 and len(zombies_group) == 0 and health_orb is None and not health_orb_spawned_room4:
+        # Spawn health orb at a random position not inside obstacles
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 50:
+            orb_x = random.randint(200, 1300)
+            orb_y = random.randint(200, 800)
+            orb_rect = pygame.Rect(orb_x - 20, orb_y - 20, 40, 40)
+            
+            # Check if orb position collides with obstacles
+            collision_orb = False
+            for obstacle in obstacles:
+                if orb_rect.colliderect(obstacle):
+                    collision_orb = True
+                    break
+            if not collision_orb:
+                for inside_obstacle in inside_obstacles:
+                    if orb_rect.colliderect(inside_obstacle):
+                        collision_orb = True
+                        break
+            
+            if not collision_orb:
+                valid_position = True
+            attempts += 1
+        
+        health_orb = HealthOrb(orb_x, orb_y)
+        all_sprites_list.add(health_orb)
+        health_orb_spawned_room4 = True
+        message_text = "A Health Orb has appeared in Room 4!"
+        message_timer = pygame.time.get_ticks()
+    
+    # Update health orb
+    if health_orb is not None:
+        health_orb.update()
+        if not health_orb.alive():
+            health_orb = None
+    
     # Room transition - only allow if no zombies in current room
     if square.rect.x >= 1500 - square.rect.width:
         if not are_zombies_in_room():
             room += 1
             square.rect.x = 100
             square.rect.y = 100
+            health_orb = None  # Reset health orb when changing rooms
             
             # Change obstacles based on room
             inside_obstacles.clear()
@@ -807,35 +956,55 @@ while running:
                 # Clear all existing zombies first
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 # Spawn more zombies in room 2: 5 normal, 2 fast
                 spawn_zombies(5, 2)
+                health_orb_spawned_room2 = False  # Reset for new room
             elif room == 1:
                 inside_obstacles.extend(original_inside_obstacles_room1)
                 message_text = "Entering Room 1"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 spawn_zombies(3, 0)
+                health_orb_spawned_room2 = False
+                health_orb_spawned_room3 = False
+                health_orb_spawned_room4 = False
             elif room == 3:
-                inside_obstacles.extend(original_inside_obstacles_room3)  # Empty list - no obstacles
-                message_text = "Entering Room 3 - No obstacles! More zombies!"
+                inside_obstacles.extend(original_inside_obstacles_room3)  # New obstacles for room 3
+                message_text = "Entering Room 3 - Watch out for obstacles!"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 # Spawn even more zombies in room 3: 7 normal, 3 fast
                 spawn_zombies(7, 3)
-            else:
-                inside_obstacles.extend(original_inside_obstacles_room2)
-                message_text = f"Entering Room {room}"
+                health_orb_spawned_room3 = False  # Reset for new room
+            elif room == 4:
+                inside_obstacles.extend(original_inside_obstacles_room4)  # New obstacles for room 4
+                message_text = "Entering Room 4 - WAVE OF ZOMBIES!"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
-                spawn_zombies(4, 1)
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
+                # Spawn 5 fast zombies and 5 normal zombies in room 4
+                spawn_zombies(5, 5)
+                health_orb_spawned_room4 = False  # Reset for new room
+            else:
+                inside_obstacles.extend(original_inside_obstacles_room4)
+                message_text = f"Entering Room {room} - More challenges!"
+                zombies_group.empty()
+                for sprite in all_sprites_list:
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
+                spawn_zombies(4, 2)
             
             message_timer = pygame.time.get_ticks()
         else:
@@ -849,6 +1018,7 @@ while running:
             room -= 1 
             square.rect.x = 1300
             square.rect.y = 100
+            health_orb = None  # Reset health orb when changing rooms
             
             # Change obstacles based on room
             inside_obstacles.clear()
@@ -857,32 +1027,51 @@ while running:
                 message_text = "Returned to Room 1"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 spawn_zombies(3, 0)
+                health_orb_spawned_room2 = False
+                health_orb_spawned_room3 = False
+                health_orb_spawned_room4 = False
             elif room == 2:
                 inside_obstacles.extend(original_inside_obstacles_room2)
                 message_text = "Entering Room 2"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 spawn_zombies(5, 2)
+                health_orb_spawned_room2 = False  # Reset for new room
             elif room == 3:
                 inside_obstacles.extend(original_inside_obstacles_room3)
-                message_text = "Entering Room 3 - No obstacles!"
+                message_text = "Entering Room 3 - Watch out for obstacles!"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 spawn_zombies(7, 3)
+                health_orb_spawned_room3 = False  # Reset for new room
+            elif room == 4:
+                inside_obstacles.extend(original_inside_obstacles_room4)
+                message_text = "Entering Room 4 - WAVE OF ZOMBIES!"
+                zombies_group.empty()
+                for sprite in all_sprites_list:
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
+                spawn_zombies(5, 5)  # 5 normal, 5 fast
+                health_orb_spawned_room4 = False  # Reset for new room
             else:
-                inside_obstacles.extend(original_inside_obstacles_room2)
+                inside_obstacles.extend(original_inside_obstacles_room4)
                 message_text = f"Entering Room {room}"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
-                        sprite.kill()
+                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball, HealthOrb)):
+                        if not isinstance(sprite, Player):
+                            sprite.kill()
                 spawn_zombies(4, 1)
             
             message_timer = pygame.time.get_ticks()
@@ -897,7 +1086,6 @@ while running:
         print("Player died! Showing death screen...")
         player_dead = True
     
-    
     # Update all sprites
     all_sprites_list.update()
 
@@ -911,7 +1099,9 @@ while running:
     elif room == 2:
         background.fill(blue)    
     elif room == 3:
-        background.fill(black)
+        background.fill(purple)
+    elif room == 4:
+        background.fill(dark_red)  # Dark red for room 4
     
     # health and stamina bar  
     health_width = int((square.health / 100) * 196)
@@ -924,13 +1114,10 @@ while running:
     for obstacle in obstacles:
         pygame.draw.rect(background, (0, 0, 0), obstacle)
     
-    # Draw inside obstacles - BLACK for room 2, NONE for room 3, BLUE for room 1
+    # Draw inside obstacles - BLACK for room 2, 3, and 4, BLUE for room 1
     for inside_obstacle in inside_obstacles:
-        if room == 2:
+        if room == 2 or room == 3 or room == 4:
             pygame.draw.rect(background, black, inside_obstacle)
-        elif room == 3:
-            # No obstacles to draw in room 3
-            pass
         else:
             pygame.draw.rect(background, (0, 0, 150), inside_obstacle)
     
@@ -953,14 +1140,6 @@ while running:
     else:
         message_timer = 0
     
-    # Draw on-screen message if active
-    if message_timer > 0 and pygame.time.get_ticks() - message_timer < 2000:
-        message_surface = message_font.render(message_text, True, (255, 255, 0))
-        message_rect = message_surface.get_rect(center=(game_width // 2, 50))
-        background.blit(message_surface, message_rect)
-    else:
-        message_timer = 0
-    
     # Draw sprites
     all_sprites_list.draw(background)
     
@@ -971,9 +1150,6 @@ while running:
         background.blit(ggs_scaled, ggs_rect)
         
         # Draw death screen buttons
-        ##!!!! Sorry haozheng  for: I need to delete this  and change font_button to message_font  
-        # this is what I delete #font_button = pygame.font.Font(None, 40)
-        # if after you fix it already and you still want to use font_button you can do it ,this just a temporary change
         pygame.draw.rect(background, (0, 200, 0), death_restart_button)
         restart_text = message_font.render("RESTART", True, (0, 0, 0))
         restart_text_rect = restart_text.get_rect(center=death_restart_button.center)
