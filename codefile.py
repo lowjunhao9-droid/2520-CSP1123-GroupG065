@@ -3,7 +3,6 @@ import random
 
 pygame.init()
 
-#=======Display window=========#
 #default screen size
 game_width = 1500
 game_height = 1000
@@ -14,7 +13,6 @@ pygame.display.set_caption("Zombie Slayer: Blade Survival") #menu
 
 #background
 background = pygame.Surface((game_width,game_height))
-#======================================#
 
 # Load UI images
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
