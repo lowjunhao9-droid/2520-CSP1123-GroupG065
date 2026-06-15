@@ -1164,5 +1164,5 @@ while running:
     window.blit(background, (0, 0)) 
     pygame.display.flip()
     clock.tick(60)
-#===============================================#
+
 pygame.quit()
