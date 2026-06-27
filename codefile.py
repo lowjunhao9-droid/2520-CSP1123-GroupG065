@@ -254,18 +254,19 @@ class Player(pygame.sprite.Sprite):
     def cast_shockwave(self, all_sprites_list):
         current_time = pygame.time.get_ticks()
         
-        # hasattr()= has attribute hasattr(object,name)
+        # hasattr()= has attribute hasattr(object,name) :Used to check if the player has a cooldown attribute set  
         if not hasattr(self,'shockwave_cooldown'):
             self.shockwave_cooldown = 1000 #here is cooldown (1000=1s)
             self.last_shockwave_time = 0
 
-        #check cooldown and stamina
+        #check player have enoght cooldown and stamina or not?
         if current_time - self.last_shockwave_time >= self.shockwave_cooldown:
             if self.stamina >= 30:
                 self.stamina -= 30
                 self.last_shockwave_time = current_time
 
                 #create the wave at the center of player
+                #noted to make the wave wave bigger just increase max_radius
                 wave = Shockwave(self.rect.centerx, self.rect.centery, max_radius=250, speed=6, damage=50 )#this is the place that truely can change damage and every thing
                 all_sprites_list.add(wave)
                 print("Shockwave cast!")
@@ -328,6 +329,7 @@ class Zombie(pygame.sprite.Sprite):
         self.speed = speed
         self.player = player
         self.health = 100
+        self.damge = 10
 
         #Cooldown for attacks
         self.attack_cooldown = 1000
@@ -387,7 +389,7 @@ class Zombie(pygame.sprite.Sprite):
                             self.player.health -= damage_taken
                             print(f"Attack Blocked! Health: {self.player.health}")
                         else:
-                            self.player.health -= 10
+                            self.player.health -= self.damage
                             print(f"Player hit! Health: {self.player.health}")
                         self.player.make_invincible(1000)
                         self.last_attack_time = current_time
@@ -396,12 +398,17 @@ class FasterZombie(Zombie):
     def __init__(self, image_file, scale=(90,90), speed=5, player=None):
         super().__init__(image_file, scale, speed, player)
         self.health = 60
-
+        self.damasge = 10
 class ArmoredZombie(Zombie):
     def __init__(self, image_file, scale=(110,110), speed=1, player=None):
-        super().__init__(image_file, scale, speed=1, player=None)
+        super().__init__(image_file, scale, speed, player)
         self.health = 200 
-        
+        self.damage = 15
+class BossZombie(Zombie):
+    def __init__(self, image_file, scale=(200,200), speed =5 , player=None):
+        super().__init__(image_file, scale, speed,player)
+        self.health = 500 
+        self.damage = 40       
 ##===================================================================================##  
 
 
@@ -498,11 +505,13 @@ class Shockwave(pygame.sprite.Sprite):
         self.image = pygame.Surface((self.size,self.size), pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=(x,y))
         self.hitbox = self.rect
-
+        
+        #to make sure the wave only will damage zombies one time only not five time
+        #why: because when it touch zombies will have around 5 time damage so mark it for damge one time only.
         self.hit_zombies = set()
 
     def update(self):
-        #slowly increate the radius
+        #slowly increate the radius to make the wave keep bigger
         self.current_radius += self.speed
 
         #if the radius bigger than the maximum radius skill disappear
@@ -510,10 +519,11 @@ class Shockwave(pygame.sprite.Sprite):
             self.kill()
             return
         
-        #clear it
+        #clear the canva
         self.image.fill((0,0,0,0))
 
-        #calculate the transparency: if the wave more further spread out,the lighter the color gets.
+        #use ratio of (1 - current radius/biggest radius) calculate the transparency of Alpha(0-255) :0 is fully transparency, 255 is no transparency
+        # this will make the wave very colourful when it came out and the bigger of the radius it increase the transparent it go
         alpha = max(0,int(255 *(1 - self.current_radius/self.max_radius)))
 
         #draw the effect for wave : lightblue colour ring (R,G,B, Alpha)
@@ -522,6 +532,7 @@ class Shockwave(pygame.sprite.Sprite):
 
         #Damage check
         for zombie in zombies_group:
+            # Only calculate if this zombie hasn't been hit by the current wave before
             if zombie not in self.hit_zombies:
                 #calculate  distance between the center of zombie and wave
                 dx = zombie.rect.centerx - self.rect.centerx
@@ -547,7 +558,7 @@ square.rect.y = 100
 all_sprites_list.add(square)
 
 # Function to spawn multiple zombies with better position checking
-def spawn_zombies(num_normal=3, num_fast=0, num_armored=0):
+def spawn_zombies(num_normal=3, num_fast=0, num_armored=0,num_boss=0):
     # Spawn normal zombies
     for i in range(num_normal):
         zombie = Zombie("Zombie1.png", scale=(100,100), player=square)
@@ -609,13 +620,64 @@ def spawn_zombies(num_normal=3, num_fast=0, num_armored=0):
     
     for i in range(num_armored):
         armored_zombie = ArmoredZombie("Armored_Zombie.png", scale=(110,110), speed=1.5, player= square )
-#Aiden add your code inside here to make the zombie not stuck in wall       
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 100:
+            armored_zombie.rect.x = random.randint(100, 1400)
+            armored_zombie.rect.y = random.randint(100, 800)
+            armored_zombie.hitbox.center = armored_zombie.rect.center
+            
+            # Check collision with ALL obstacles
+            collision = False
+            for obstacle in obstacles:
+                if armored_zombie.hitbox.colliderect(obstacle):
+                    collision = True
+                    break
+            if not collision:
+                for inside_obstacle in inside_obstacles:
+                    if armored_zombie.hitbox.colliderect(inside_obstacle):
+                        collision = True
+                        break
+            
+            if not collision:
+                valid_position = True
+            attempts += 1
+        
         zombies_group.add(armored_zombie)
         all_sprites_list.add(armored_zombie)
 
 
+    for i in range(num_boss):
+        boss_zombie = BossZombie("BossZombie.png", scale=(200,200), speed=5, player=square)
+        valid_position = False
+        attempts = 0
+        while not valid_position and attempts < 100:
+            boss_zombie.rect.x = random.randint(100, 1400)
+            boss_zombie.rect.y = random.randint(100, 800)
+            boss_zombie.hitbox.center = boss_zombie.rect.center
+            
+            # Check collision with ALL obstacles
+            collision = False
+            for obstacle in obstacles:
+                if boss_zombie.hitbox.colliderect(obstacle):
+                    collision = True
+                    break
+            if not collision:
+                for inside_obstacle in inside_obstacles:
+                    if boss_zombie.hitbox.colliderect(inside_obstacle):
+                        collision = True
+                        break
+            
+            if not collision:
+                valid_position = True
+            attempts += 1
+        
+        zombies_group.add(boss_zombie)
+        all_sprites_list.add(boss_zombie)
+
+
 # Spawn initial zombies (3 normal, 0 fast in first room, 1 armored)
-spawn_zombies(3, 0, 1)
+spawn_zombies(3, 0, 1, 1)
 
 # Main Menu
 def show_menu():
@@ -857,7 +919,7 @@ while running:
                 message_text = "Returned to Room 1"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
+                    if isinstance(sprite, (Zombie, FasterZombie, ArmoredZombie,BossZombie, Attack, Fireball)):
                         sprite.kill()
                 spawn_zombies(3, 0)
             elif room == 2:
@@ -865,7 +927,7 @@ while running:
                 message_text = "Entering Room 2"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
+                    if isinstance(sprite, (Zombie, FasterZombie,ArmoredZombie,BossZombie, Attack, Fireball)):
                         sprite.kill()
                 spawn_zombies(5, 2)
             elif room == 3:
@@ -873,7 +935,7 @@ while running:
                 message_text = "Entering Room 3 - No obstacles!"
                 zombies_group.empty()
                 for sprite in all_sprites_list:
-                    if isinstance(sprite, (Zombie, FasterZombie, Attack, Fireball)):
+                    if isinstance(sprite, (Zombie, FasterZombie,ArmoredZombie, BossZombie, Attack, Fireball)):
                         sprite.kill()
                 spawn_zombies(7, 3)
             else:
