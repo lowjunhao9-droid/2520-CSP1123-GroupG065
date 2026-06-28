@@ -20,6 +20,7 @@ background = pygame.Surface((game_width,game_height))
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 fireui_image = pygame.image.load("fireui.png").convert_alpha()
+waveui_image = pygame.image.load("waveui.png").convert_alpha()
 menu_background = pygame.image.load("Menu1600.png").convert()
 zombs_image = pygame.image.load("zombs.png").convert_alpha()
 ggs_image = pygame.image.load("GGs.png").convert_alpha()
@@ -163,6 +164,8 @@ class Player(pygame.sprite.Sprite):
         
         self.fireball_cooldown = 500
         self.last_fireball_time = 0
+        self.shockwave_cooldown = 1000
+        self.last_shockwave_time = 0
         self.facing = "right"
         self.image = self.images[self.facing]
 
@@ -255,11 +258,6 @@ class Player(pygame.sprite.Sprite):
     
     def cast_shockwave(self, all_sprites_list):
         current_time = pygame.time.get_ticks()
-        
-        # hasattr()= has attribute hasattr(object,name) :Used to check if the player has a cooldown attribute set  
-        if not hasattr(self,'shockwave_cooldown'):
-            self.shockwave_cooldown = 1000 #here is cooldown (1000=1s)
-            self.last_shockwave_time = 0
 
         #check player have enoght cooldown and stamina or not?
         if current_time - self.last_shockwave_time >= self.shockwave_cooldown:
@@ -331,6 +329,7 @@ class Zombie(pygame.sprite.Sprite):
         self.speed = speed
         self.player = player
         self.health = 100
+        self.max_health = self.health
         self.damage = 10
 
         #Cooldown for attacks
@@ -402,16 +401,19 @@ class FasterZombie(Zombie):
     def __init__(self, image_file, scale=(90,90), speed=5, player=None):
         super().__init__(image_file, scale, speed, player)
         self.health = 60
+        self.max_health = self.health
         self.damage = 10
 class ArmoredZombie(Zombie):
     def __init__(self, image_file, scale=(110,110), speed=1, player=None):
         super().__init__(image_file, scale, speed, player)
         self.health = 200 
+        self.max_health = self.health
         self.damage = 15
 class BossZombie(Zombie):
     def __init__(self, image_file, scale=(200,200), speed =5 , player=None):
         super().__init__(image_file, scale, speed,player)
         self.health = 500 
+        self.max_health = self.health
         self.damage = 40       
 ##===================================================================================##  
 
@@ -1005,15 +1007,24 @@ while running:
     # Draw UI (just the images, no numbers)
     background.blit(healthui_image, (0, 85))
     background.blit(staminaui_image, (260,101))
-    # Draw timer while fireball is on cooldown; show icon when ready
+    # Draw cooldowns for abilities
     current_time = pygame.time.get_ticks()
-    cooldown_remaining = square.fireball_cooldown - (current_time - square.last_fireball_time)
-    if cooldown_remaining > 0:
-        cooldown_text = message_font.render(f"{cooldown_remaining / 1000:.1f}", True, (255, 255, 255))
-        cooldown_rect = cooldown_text.get_rect(topleft=(530, 115))
-        background.blit(cooldown_text, cooldown_rect)
+
+    fireball_cooldown_remaining = square.fireball_cooldown - (current_time - square.last_fireball_time)
+    if fireball_cooldown_remaining > 0:
+        fireball_cooldown_text = message_font.render(f"{fireball_cooldown_remaining / 1000:.1f}", True, (255, 255, 255))
+        fireball_cooldown_rect = fireball_cooldown_text.get_rect(topleft=(530, 115))
+        background.blit(fireball_cooldown_text, fireball_cooldown_rect)
     else:
         background.blit(fireui_image, (525, 101))
+
+    shockwave_cooldown_remaining = square.shockwave_cooldown - (current_time - square.last_shockwave_time)
+    if shockwave_cooldown_remaining > 0:
+        shockwave_cooldown_text = message_font.render(f"{shockwave_cooldown_remaining / 1000:.1f}", True, (255, 255, 255))
+        shockwave_cooldown_rect = shockwave_cooldown_text.get_rect(topleft=(600, 115))
+        background.blit(shockwave_cooldown_text, shockwave_cooldown_rect)
+    else:
+        background.blit(waveui_image, (595, 101))
     
     # Draw on-screen message if active
     if message_timer > 0 and pygame.time.get_ticks() - message_timer < 2000:
@@ -1033,6 +1044,19 @@ while running:
     
     # Draw sprites
     all_sprites_list.draw(background)
+
+    # Draw zombie health bars above each zombie
+    for zombie in zombies_group:
+        if zombie.health > 0 and zombie.max_health > 0:
+            bar_width = 60
+            bar_height = 6
+            bar_x = zombie.rect.centerx - bar_width // 2
+            bar_y = zombie.rect.top - 10
+            health_ratio = max(0, zombie.health / zombie.max_health)
+
+            pygame.draw.rect(background, (0, 0, 0), (bar_x - 1, bar_y - 1, bar_width + 2, bar_height + 2))
+            pygame.draw.rect(background, (220, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+            pygame.draw.rect(background, (0, 220, 0), (bar_x, bar_y, int(bar_width * health_ratio), bar_height))
     
     # Draw GGs and buttons if player is dead
     if player_dead:
