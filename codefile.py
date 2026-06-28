@@ -20,6 +20,7 @@ background = pygame.Surface((game_width,game_height))
 healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 fireui_image = pygame.image.load("fireui.png").convert_alpha()
+waveui_image = pygame.image.load("waveui.png").convert_alpha()
 menu_background = pygame.image.load("Menu1600.png").convert()
 zombs_image = pygame.image.load("zombs.png").convert_alpha()
 ggs_image = pygame.image.load("GGs.png").convert_alpha()
@@ -37,6 +38,7 @@ black = (0,0,0)
 blue = (0,0,150)
 purple = (100,0,100)
 room = 1
+zombies_killed = 0
 
 #still obstacles 
 obstacles = [
@@ -116,7 +118,7 @@ def draw_gate(surface, rect, is_open):
         # Draw locked gate pattern
         for y in range(rect.top + 8, rect.bottom - 8, 20):
             pygame.draw.rect(surface, (20, 20, 20), (rect.left + 5, y, rect.width - 10, 4))
-        # Add a red lock indicator when zombies are present
+        # Add a red lock indicator when zombies are present damage
         if are_zombies_in_room():
             pygame.draw.circle(surface, (255, 0, 0), (rect.centerx, rect.centery - 30), 15)
             pygame.draw.rect(surface, (255, 0, 0), (rect.centerx - 5, rect.centery - 15, 10, 20))
@@ -129,8 +131,9 @@ def draw_gate(surface, rect, is_open):
 
 # definition of reset game
 def reset_game():
-    global square, room, inside_obstacles
+    global square, room, inside_obstacles, zombies_killed
     room = 1
+    zombies_killed = 0
     # Reset inside obstacles to room 1 obstacles
     inside_obstacles.clear()
     inside_obstacles.extend(original_inside_obstacles_room1)
@@ -161,6 +164,8 @@ class Player(pygame.sprite.Sprite):
         
         self.fireball_cooldown = 500
         self.last_fireball_time = 0
+        self.shockwave_cooldown = 1000
+        self.last_shockwave_time = 0
         self.facing = "right"
         self.image = self.images[self.facing]
 
@@ -253,11 +258,6 @@ class Player(pygame.sprite.Sprite):
     
     def cast_shockwave(self, all_sprites_list):
         current_time = pygame.time.get_ticks()
-        
-        # hasattr()= has attribute hasattr(object,name) :Used to check if the player has a cooldown attribute set  
-        if not hasattr(self,'shockwave_cooldown'):
-            self.shockwave_cooldown = 1000 #here is cooldown (1000=1s)
-            self.last_shockwave_time = 0
 
         #check player have enoght cooldown and stamina or not?
         if current_time - self.last_shockwave_time >= self.shockwave_cooldown:
@@ -329,7 +329,8 @@ class Zombie(pygame.sprite.Sprite):
         self.speed = speed
         self.player = player
         self.health = 100
-        self.damge = 10
+        self.max_health = self.health
+        self.damage = 10
 
         #Cooldown for attacks
         self.attack_cooldown = 1000
@@ -342,6 +343,8 @@ class Zombie(pygame.sprite.Sprite):
     def update(self):
         # If zombie is dead, remove it
         if self.health <= 0:
+            global zombies_killed
+            zombies_killed += 1
             self.kill()
             return
         
@@ -398,16 +401,19 @@ class FasterZombie(Zombie):
     def __init__(self, image_file, scale=(90,90), speed=5, player=None):
         super().__init__(image_file, scale, speed, player)
         self.health = 60
-        self.damasge = 10
+        self.max_health = self.health
+        self.damage = 10
 class ArmoredZombie(Zombie):
     def __init__(self, image_file, scale=(110,110), speed=1, player=None):
         super().__init__(image_file, scale, speed, player)
         self.health = 200 
+        self.max_health = self.health
         self.damage = 15
 class BossZombie(Zombie):
     def __init__(self, image_file, scale=(200,200), speed =5 , player=None):
         super().__init__(image_file, scale, speed,player)
         self.health = 500 
+        self.max_health = self.health
         self.damage = 40       
 ##===================================================================================##  
 
@@ -1001,11 +1007,24 @@ while running:
     # Draw UI (just the images, no numbers)
     background.blit(healthui_image, (0, 85))
     background.blit(staminaui_image, (260,101))
-    fireui_x = 260 + staminaui_image.get_width() + 10
-    # Hide fire UI while a fireball exists
-    has_fireball = any(isinstance(s, Fireball) for s in all_sprites_list)
-    if not has_fireball:
-        background.blit(fireui_image, (fireui_x, 101))
+    # Draw cooldowns for abilities
+    current_time = pygame.time.get_ticks()
+
+    fireball_cooldown_remaining = square.fireball_cooldown - (current_time - square.last_fireball_time)
+    if fireball_cooldown_remaining > 0:
+        fireball_cooldown_text = message_font.render(f"{fireball_cooldown_remaining / 1000:.1f}", True, (255, 255, 255))
+        fireball_cooldown_rect = fireball_cooldown_text.get_rect(topleft=(530, 115))
+        background.blit(fireball_cooldown_text, fireball_cooldown_rect)
+    else:
+        background.blit(fireui_image, (525, 101))
+
+    shockwave_cooldown_remaining = square.shockwave_cooldown - (current_time - square.last_shockwave_time)
+    if shockwave_cooldown_remaining > 0:
+        shockwave_cooldown_text = message_font.render(f"{shockwave_cooldown_remaining / 1000:.1f}", True, (255, 255, 255))
+        shockwave_cooldown_rect = shockwave_cooldown_text.get_rect(topleft=(600, 115))
+        background.blit(shockwave_cooldown_text, shockwave_cooldown_rect)
+    else:
+        background.blit(waveui_image, (595, 101))
     
     # Draw on-screen message if active
     if message_timer > 0 and pygame.time.get_ticks() - message_timer < 2000:
@@ -1025,12 +1044,29 @@ while running:
     
     # Draw sprites
     all_sprites_list.draw(background)
+
+    # Draw zombie health bars above each zombie
+    for zombie in zombies_group:
+        if zombie.health > 0 and zombie.max_health > 0:
+            bar_width = 60
+            bar_height = 6
+            bar_x = zombie.rect.centerx - bar_width // 2
+            bar_y = zombie.rect.top - 10
+            health_ratio = max(0, zombie.health / zombie.max_health)
+
+            pygame.draw.rect(background, (0, 0, 0), (bar_x - 1, bar_y - 1, bar_width + 2, bar_height + 2))
+            pygame.draw.rect(background, (220, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+            pygame.draw.rect(background, (0, 220, 0), (bar_x, bar_y, int(bar_width * health_ratio), bar_height))
     
     # Draw GGs and buttons if player is dead
     if player_dead:
         ggs_scaled = pygame.transform.scale(ggs_image, (600, 400))
         ggs_rect = ggs_scaled.get_rect(center=(750, 350))
         background.blit(ggs_scaled, ggs_rect)
+
+        kill_count_text = message_font.render(f"Zombies Killed: {zombies_killed}", True, (255, 255, 255))
+        kill_count_rect = kill_count_text.get_rect(midtop=(750, 750))
+        background.blit(kill_count_text, kill_count_rect)
         
         # Draw death screen buttons
         ##!!!! Sorry haozheng  for: I need to delete this  and change font_button to message_font  
