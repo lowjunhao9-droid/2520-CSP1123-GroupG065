@@ -94,9 +94,6 @@ inside_obstacles_room4 = [
     pygame.Rect(700, 150, 150, 50),    # Top horizontal bar
     pygame.Rect(1100, 250, 80, 150),   # Right vertical bar
     pygame.Rect(500, 600, 120, 50),    # Bottom horizontal bar
-    pygame.Rect(900, 550, 80, 80),     # Center square
-    pygame.Rect(200, 700, 80, 150),    # Left vertical bar
-    pygame.Rect(1200, 650, 100, 100),  # Bottom right square
 ]
 
 # Room 5 obstacles - fewer obstacles
@@ -104,6 +101,9 @@ inside_obstacles_room5 = [
     pygame.Rect(400, 300, 80, 80),     # Single square
     pygame.Rect(800, 600, 100, 50),    # Horizontal bar
     pygame.Rect(1100, 400, 60, 60),    # Small square
+     pygame.Rect(900, 550, 80, 80),     # Center square
+    pygame.Rect(200, 700, 80, 150),    # Left vertical bar
+    pygame.Rect(1200, 650, 100, 100),  # Bottom right square
 ]
 
 # Room 6 obstacles - even fewer
