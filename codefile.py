@@ -21,6 +21,7 @@ healthui_image = pygame.image.load("healthui.png").convert_alpha()
 staminaui_image = pygame.image.load("staminaui.png").convert_alpha()
 fireui_image = pygame.image.load("fireui.png").convert_alpha()
 waveui_image = pygame.image.load("waveui.png").convert_alpha()
+shieldui_image = pygame.image.load("shieldui.png").convert_alpha()
 menu_background = pygame.image.load("Menu1600.png").convert()
 zombs_image = pygame.image.load("zombs.png").convert_alpha()
 ggs_image = pygame.image.load("GGs.png").convert_alpha()
@@ -1025,6 +1026,7 @@ while running:
         background.blit(shockwave_cooldown_text, shockwave_cooldown_rect)
     else:
         background.blit(waveui_image, (595, 101))
+    background.blit(shieldui_image, (645, 103))
     
     # Draw on-screen message if active
     if message_timer > 0 and pygame.time.get_ticks() - message_timer < 2000:
